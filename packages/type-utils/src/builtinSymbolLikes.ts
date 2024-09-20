@@ -1,3 +1,4 @@
+import * as tsutils from 'ts-api-utils';
 import * as ts from 'typescript';
 
 import { isSymbolFromDefaultLibrary } from './isSymbolFromDefaultLibrary';
@@ -137,6 +138,14 @@ export function isBuiltinSymbolLike(
       isSymbolFromDefaultLibrary(program, symbol)
     ) {
       return true;
+    }
+
+    if (tsutils.isTypeParameter(type)) {
+      const typeConstraint = type.getConstraint();
+
+      if (typeConstraint) {
+        return isBuiltinSymbolLike(program, typeConstraint, symbolName);
+      }
     }
 
     return null;
