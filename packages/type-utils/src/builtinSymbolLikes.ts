@@ -1,4 +1,3 @@
-import * as tsutils from 'ts-api-utils';
 import * as ts from 'typescript';
 
 import { isSymbolFromDefaultLibrary } from './isSymbolFromDefaultLibrary';
@@ -140,14 +139,6 @@ export function isBuiltinSymbolLike(
       return true;
     }
 
-    if (tsutils.isTypeParameter(type)) {
-      const typeConstraint = type.getConstraint();
-
-      if (typeConstraint) {
-        return isBuiltinSymbolLike(program, typeConstraint, symbolName);
-      }
-    }
-
     return null;
   });
 }
@@ -166,6 +157,13 @@ export function isBuiltinSymbolLikeRecurser(
     return type.types.every(t =>
       isBuiltinSymbolLikeRecurser(program, t, predicate),
     );
+  }
+  if (type.isTypeParameter()) {
+    const t = type.getConstraint();
+
+    if (t) {
+      return isBuiltinSymbolLikeRecurser(program, t, predicate);
+    }
   }
 
   const predicateResult = predicate(type);
