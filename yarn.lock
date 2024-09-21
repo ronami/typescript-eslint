@@ -9882,7 +9882,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint@npm:*, eslint@npm:^9.15.0":
+"eslint@npm:*, eslint@npm:^9.0.0, eslint@npm:^9.15.0":
   version: 9.16.0
   resolution: "eslint@npm:9.16.0"
   dependencies:
@@ -19080,6 +19080,17 @@ __metadata:
   checksum: 3b34a3d77165a2cb82b34014b3aba93b1c4637a5011807557dc2f3da826c59975a5ccad765721c4648b39817e3472789f9b0fa98fc854c5c1c7a1e632aacdc28
   languageName: node
   linkType: hard
+
+"test-project@workspace:packages/test-project":
+  version: 0.0.0-use.local
+  resolution: "test-project@workspace:packages/test-project"
+  dependencies:
+    "@typescript-eslint/eslint-plugin": 8.18.0
+    "@typescript-eslint/parser": 8.18.0
+    eslint: ^9.0.0
+    typescript: "*"
+  languageName: unknown
+  linkType: soft
 
 "text-table@npm:^0.2.0":
   version: 0.2.0

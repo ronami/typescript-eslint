@@ -8,6 +8,7 @@ export * from './getTypeName';
 export * from './isSymbolFromDefaultLibrary';
 export * from './isTypeReadonly';
 export * from './isUnsafeAssignment';
+export * from './isLiteralToClassAssignment';
 export * from './predicates';
 export * from './propertyTypes';
 export * from './requiresQuoting';

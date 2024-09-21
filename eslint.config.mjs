@@ -102,6 +102,8 @@ export default tseslint.config(
     },
     linterOptions: { reportUnusedDisableDirectives: 'error' },
     rules: {
+      '@typescript-eslint/no-literal-to-class': 'error',
+
       //
       // our plugin :D
       //
@@ -682,6 +684,12 @@ export default tseslint.config(
           groups: ['first', 'second'],
         },
       ],
+    },
+  },
+  {
+    files: ['packages/test-project/**/*.ts'],
+    rules: {
+      // '@typescript-eslint/no-unused-return-types': 'error',
     },
   },
 );
