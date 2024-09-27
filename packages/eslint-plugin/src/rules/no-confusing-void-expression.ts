@@ -115,9 +115,7 @@ export default createRule<Options, MessageId>({
         current = current.parent;
       }
 
-      // this shouldn't happen in correct code, but someone may attempt to parse bad code
-      // the parser won't error, so we shouldn't throw here
-      /* istanbul ignore next */ return null;
+      return null;
     }
 
     return {
@@ -305,6 +303,11 @@ export default createRule<Options, MessageId>({
             suggest: [{ messageId: 'voidExprWrapVoid', fix: wrapVoidFix }],
           });
         }
+
+        context.report({
+          node,
+          messageId: 'invalidVoidExpr',
+        });
       },
     };
 
