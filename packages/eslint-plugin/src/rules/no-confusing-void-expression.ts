@@ -127,12 +127,12 @@ export default createRule<Options, MessageId>({
         if (tsutils.isIntersectionType(returnType)) {
           return tsutils
             .unionTypeParts(returnType)
-            .every(part => tsutils.isTypeFlagSet(part, ts.TypeFlags.VoidLike));
+            .every(tsutils.isIntrinsicVoidType);
         }
 
         return tsutils
           .unionTypeParts(returnType)
-          .some(part => tsutils.isTypeFlagSet(part, ts.TypeFlags.VoidLike));
+          .some(tsutils.isIntrinsicVoidType);
       });
     }
 
@@ -144,14 +144,22 @@ export default createRule<Options, MessageId>({
     ): boolean {
       const functionTSNode = services.esTreeNodeToTSNodeMap.get(functionNode);
 
-      let functionType =
+      const functionType =
         ts.isFunctionExpression(functionTSNode) ||
         ts.isArrowFunction(functionTSNode)
           ? getContextualType(checker, functionTSNode)
           : services.getTypeAtLocation(functionNode);
 
       if (!functionType) {
-        functionType = services.getTypeAtLocation(functionNode);
+        if (!functionTSNode.type) {
+          return false;
+        }
+
+        const returnType = checker.getTypeFromTypeNode(functionTSNode.type);
+
+        return tsutils
+          .intersectionTypeParts(returnType)
+          .some(tsutils.isIntrinsicVoidType);
       }
 
       const functionTypeParts = tsutils.unionTypeParts(functionType);
