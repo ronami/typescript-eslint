@@ -101,52 +101,6 @@ export default createRule<Options, MessageId>({
     const services = getParserServices(context);
     const checker = services.program.getTypeChecker();
 
-    function isVoidReturningFunctionType(functionType: ts.Type): boolean {
-      const callSignatures = tsutils.getCallSignaturesOfType(functionType);
-
-      return callSignatures.some(signature => {
-        const returnType = signature.getReturnType();
-
-        return tsutils
-          .unionTypeParts(returnType)
-          .some(tsutils.isIntrinsicVoidType);
-      });
-    }
-
-    function isVoidReturningFunctionNode(
-      functionNode:
-        | TSESTree.ArrowFunctionExpression
-        | TSESTree.FunctionDeclaration
-        | TSESTree.FunctionExpression,
-    ): boolean {
-      const functionTSNode = services.esTreeNodeToTSNodeMap.get(functionNode);
-
-      if (functionTSNode.type) {
-        const returnType = checker.getTypeFromTypeNode(functionTSNode.type);
-
-        return tsutils
-          .unionTypeParts(returnType)
-          .some(tsutils.isIntrinsicVoidType);
-      }
-
-      if (
-        ts.isFunctionExpression(functionTSNode) ||
-        ts.isArrowFunction(functionTSNode)
-      ) {
-        const functionType = checker.getContextualType(functionTSNode);
-
-        if (!functionType) {
-          return false;
-        }
-
-        return tsutils
-          .unionTypeParts(functionType)
-          .some(isVoidReturningFunctionType);
-      }
-
-      return false;
-    }
-
     return {
       'AwaitExpression, CallExpression, TaggedTemplateExpression'(
         node:
@@ -460,6 +414,52 @@ export default createRule<Options, MessageId>({
 
       const type = getConstrainedTypeAtLocation(services, targetNode);
       return tsutils.isTypeFlagSet(type, ts.TypeFlags.VoidLike);
+    }
+
+    function isVoidReturningFunctionType(functionType: ts.Type): boolean {
+      const callSignatures = tsutils.getCallSignaturesOfType(functionType);
+
+      return callSignatures.some(signature => {
+        const returnType = signature.getReturnType();
+
+        return tsutils
+          .unionTypeParts(returnType)
+          .some(tsutils.isIntrinsicVoidType);
+      });
+    }
+
+    function isVoidReturningFunctionNode(
+      functionNode:
+        | TSESTree.ArrowFunctionExpression
+        | TSESTree.FunctionDeclaration
+        | TSESTree.FunctionExpression,
+    ): boolean {
+      const functionTSNode = services.esTreeNodeToTSNodeMap.get(functionNode);
+
+      if (functionTSNode.type) {
+        const returnType = checker.getTypeFromTypeNode(functionTSNode.type);
+
+        return tsutils
+          .unionTypeParts(returnType)
+          .some(tsutils.isIntrinsicVoidType);
+      }
+
+      if (
+        ts.isFunctionExpression(functionTSNode) ||
+        ts.isArrowFunction(functionTSNode)
+      ) {
+        const functionType = checker.getContextualType(functionTSNode);
+
+        if (!functionType) {
+          return false;
+        }
+
+        return tsutils
+          .unionTypeParts(functionType)
+          .some(isVoidReturningFunctionType);
+      }
+
+      return false;
     }
   },
 });
