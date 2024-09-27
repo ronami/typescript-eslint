@@ -123,12 +123,6 @@ export default createRule<Options, MessageId>({
       return callSignatures.some(signature => {
         const returnType = signature.getReturnType();
 
-        if (tsutils.isIntersectionType(returnType)) {
-          return tsutils
-            .unionTypeParts(returnType)
-            .every(tsutils.isIntrinsicVoidType);
-        }
-
         return tsutils
           .unionTypeParts(returnType)
           .some(tsutils.isIntrinsicVoidType);
@@ -147,7 +141,7 @@ export default createRule<Options, MessageId>({
         const returnType = checker.getTypeFromTypeNode(functionTSNode.type);
 
         return tsutils
-          .intersectionTypeParts(returnType)
+          .unionTypeParts(returnType)
           .some(tsutils.isIntrinsicVoidType);
       }
 
@@ -161,17 +155,9 @@ export default createRule<Options, MessageId>({
           return false;
         }
 
-        const functionTypeParts = tsutils.unionTypeParts(functionType);
-
-        return functionTypeParts.some(part => {
-          if (tsutils.isIntersectionType(part)) {
-            return tsutils
-              .intersectionTypeParts(part)
-              .every(isVoidReturningFunctionType);
-          }
-
-          return isVoidReturningFunctionType(part);
-        });
+        return tsutils
+          .unionTypeParts(functionType)
+          .some(isVoidReturningFunctionType);
       }
 
       return false;
