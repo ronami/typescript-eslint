@@ -146,6 +146,36 @@ export default createRule<Options, MessageId>({
         if (invalidAncestor.type === AST_NODE_TYPES.ArrowFunctionExpression) {
           // handle arrow function shorthand
 
+          const functionNode = invalidAncestor;
+
+          const functionTSNode =
+            services.esTreeNodeToTSNodeMap.get(functionNode);
+
+          let functionType =
+            ts.isFunctionExpression(functionTSNode) ||
+            ts.isArrowFunction(functionTSNode)
+              ? getContextualType(checker, functionTSNode)
+              : services.getTypeAtLocation(functionNode);
+
+          if (!functionType) {
+            functionType = services.getTypeAtLocation(functionNode);
+          }
+
+          const callSignatures = tsutils.getCallSignaturesOfType(functionType);
+
+          const returnsVoid = callSignatures.every(signature => {
+            const returnType = signature.getReturnType();
+            const returnTypeParts = tsutils.unionTypeParts(returnType);
+
+            return returnTypeParts.some(part =>
+              tsutils.isTypeFlagSet(part, ts.TypeFlags.VoidLike),
+            );
+          });
+
+          if (returnsVoid) {
+            return;
+          }
+
           if (options.ignoreVoidOperator) {
             // handle wrapping with `void`
             return context.report({
@@ -223,22 +253,17 @@ export default createRule<Options, MessageId>({
           const callSignatures = tsutils.getCallSignaturesOfType(functionType);
 
           const returnsVoid = callSignatures.every(signature => {
-            return tsutils.isTypeFlagSet(
-              signature.getReturnType(),
-              ts.TypeFlags.VoidLike,
+            const returnType = signature.getReturnType();
+            const returnTypeParts = tsutils.unionTypeParts(returnType);
+
+            return returnTypeParts.some(part =>
+              tsutils.isTypeFlagSet(part, ts.TypeFlags.VoidLike),
             );
           });
 
           if (returnsVoid) {
             return;
           }
-
-          // if (functionTSNode.type) {
-          // for (const signature of callSignatures) {
-          //   const signatureReturnType = signature.getReturnType();
-          //   console.log(checker.typeToString(signatureReturnType));
-          // }
-          // }
 
           if (options.ignoreVoidOperator) {
             // handle wrapping with `void`
