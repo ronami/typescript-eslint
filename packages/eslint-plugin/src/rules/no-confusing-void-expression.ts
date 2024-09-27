@@ -20,6 +20,7 @@ export type Options = [
   {
     ignoreArrowShorthand?: boolean;
     ignoreVoidOperator?: boolean;
+    ignoreVoidReturningFunctions?: boolean;
   },
 ];
 
@@ -79,6 +80,11 @@ export default createRule<Options, MessageId>({
           ignoreVoidOperator: {
             description:
               'Whether to ignore returns that start with the `void` operator.',
+            type: 'boolean',
+          },
+          ignoreVoidReturningFunctions: {
+            description:
+              'Whether to ignore returns from functions with explicit `void` return types and functions with contextual `void` return types',
             type: 'boolean',
           },
         },
@@ -169,10 +175,12 @@ export default createRule<Options, MessageId>({
         if (invalidAncestor.type === AST_NODE_TYPES.ArrowFunctionExpression) {
           // handle arrow function shorthand
 
-          const returnsVoid = isVoidReturningFunctionNode(invalidAncestor);
+          if (options.ignoreVoidReturningFunctions) {
+            const returnsVoid = isVoidReturningFunctionNode(invalidAncestor);
 
-          if (returnsVoid) {
-            return;
+            if (returnsVoid) {
+              return;
+            }
           }
 
           if (options.ignoreVoidOperator) {
@@ -230,13 +238,15 @@ export default createRule<Options, MessageId>({
         if (invalidAncestor.type === AST_NODE_TYPES.ReturnStatement) {
           // handle return statement
 
-          const functionNode = getParentFunctionNode(invalidAncestor);
+          if (options.ignoreVoidReturningFunctions) {
+            const functionNode = getParentFunctionNode(invalidAncestor);
 
-          if (functionNode) {
-            const returnsVoid = isVoidReturningFunctionNode(functionNode);
+            if (functionNode) {
+              const returnsVoid = isVoidReturningFunctionNode(functionNode);
 
-            if (returnsVoid) {
-              return;
+              if (returnsVoid) {
+                return;
+              }
             }
           }
 

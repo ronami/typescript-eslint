@@ -121,6 +121,7 @@ function cool(input: string) {
       `,
     },
     {
+      options: [{ ignoreVoidReturningFunctions: true }],
       code: `
 function f(): void {
   return console.log('bar');
@@ -128,6 +129,7 @@ function f(): void {
       `,
     },
     {
+      options: [{ ignoreVoidReturningFunctions: true }],
       code: `
 const f = (): void => {
   return console.log('bar');
@@ -135,47 +137,55 @@ const f = (): void => {
       `,
     },
     {
+      options: [{ ignoreVoidReturningFunctions: true }],
       code: `
 const f = (): void => console.log('bar');
       `,
     },
     {
+      options: [{ ignoreVoidReturningFunctions: true }],
       code: `
 type Foo = () => void;
 const test: Foo = () => console.log('foo');
       `,
     },
     {
+      options: [{ ignoreVoidReturningFunctions: true }],
       code: `
 declare function foo(arg: () => void): void;
 foo(() => console.log());
       `,
     },
     {
+      options: [{ ignoreVoidReturningFunctions: true }],
       code: `
 declare function foo(arg: (() => void) | (() => string)): void;
 foo(() => console.log());
       `,
     },
     {
+      options: [{ ignoreVoidReturningFunctions: true }],
       code: `
 declare function foo(arg: (() => void) | (() => string) | string): void;
 foo(() => console.log());
       `,
     },
     {
+      options: [{ ignoreVoidReturningFunctions: true }],
       code: `
 declare function foo(arg: () => void | string): void;
 foo(() => console.log());
       `,
     },
     {
+      options: [{ ignoreVoidReturningFunctions: true }],
       code: `
 declare function foo(options: { cb: () => void }): void;
 foo({ cb: () => console.log() });
       `,
     },
     {
+      options: [{ ignoreVoidReturningFunctions: true }],
       code: `
 const q = {
   foo: { bar: () => console.log() },
@@ -185,6 +195,7 @@ const q = {
       `,
     },
     {
+      options: [{ ignoreVoidReturningFunctions: true }],
       code: `
 interface Foo {
   foo: () => void;
@@ -198,6 +209,7 @@ function bar(): Foo {
       `,
     },
     {
+      options: [{ ignoreVoidReturningFunctions: true }],
       code: `
 type HigherOrderType = () => () => () => void;
 const x: HigherOrderType = () => () => () => console.log();
@@ -207,6 +219,7 @@ const x: HigherOrderType = () => () => () => console.log();
 
   invalid: [
     {
+      options: [{ ignoreVoidReturningFunctions: true }],
       code: `
         function f(): any {
           return console.log('bar');
@@ -220,6 +233,7 @@ const x: HigherOrderType = () => () => () => console.log();
       errors: [{ column: 18, messageId: 'invalidVoidExprReturnLast' }],
     },
     {
+      options: [{ ignoreVoidReturningFunctions: true }],
       code: `
 declare function foo(arg: () => any): void;
 foo(() => console.log());
@@ -231,6 +245,7 @@ foo(() => { console.log(); });
       errors: [{ column: 11, messageId: 'invalidVoidExprArrow' }],
     },
     {
+      options: [{ ignoreVoidReturningFunctions: true }],
       code: `
         function f() {
           return console.log('bar');
@@ -244,6 +259,7 @@ foo(() => { console.log(); });
       errors: [{ column: 18, messageId: 'invalidVoidExprReturnLast' }],
     },
     {
+      options: [{ ignoreVoidReturningFunctions: true }],
       code: `
         const f = () => {
           return console.log('bar');
@@ -257,6 +273,7 @@ foo(() => { console.log(); });
       errors: [{ column: 18, messageId: 'invalidVoidExprReturnLast' }],
     },
     {
+      options: [{ ignoreVoidReturningFunctions: true }],
       code: `
         const f = () => console.log('bar');
       `,
