@@ -7,6 +7,7 @@ import type { MakeRequired } from '../util';
 import {
   createRule,
   getConstrainedTypeAtLocation,
+  getContextualType,
   getParserServices,
   isClosingParenToken,
   isOpeningParenToken,
@@ -91,6 +92,34 @@ export default createRule<Options, MessageId>({
   defaultOptions: [{ ignoreArrowShorthand: false, ignoreVoidOperator: false }],
 
   create(context, [options]) {
+    const services = getParserServices(context);
+    const checker = services.program.getTypeChecker();
+
+    function getParentFunctionNode(
+      node: TSESTree.Node,
+    ):
+      | TSESTree.ArrowFunctionExpression
+      | TSESTree.FunctionDeclaration
+      | TSESTree.FunctionExpression
+      | null {
+      let current = node.parent;
+      while (current) {
+        if (
+          current.type === AST_NODE_TYPES.ArrowFunctionExpression ||
+          current.type === AST_NODE_TYPES.FunctionDeclaration ||
+          current.type === AST_NODE_TYPES.FunctionExpression
+        ) {
+          return current;
+        }
+
+        current = current.parent;
+      }
+
+      // this shouldn't happen in correct code, but someone may attempt to parse bad code
+      // the parser won't error, so we shouldn't throw here
+      /* istanbul ignore next */ return null;
+    }
+
     return {
       'AwaitExpression, CallExpression, TaggedTemplateExpression'(
         node:
@@ -98,7 +127,6 @@ export default createRule<Options, MessageId>({
           | TSESTree.CallExpression
           | TSESTree.TaggedTemplateExpression,
       ): void {
-        const services = getParserServices(context);
         const type = getConstrainedTypeAtLocation(services, node);
         if (!tsutils.isTypeFlagSet(type, ts.TypeFlags.VoidLike)) {
           // not a void expression
@@ -175,6 +203,45 @@ export default createRule<Options, MessageId>({
         if (invalidAncestor.type === AST_NODE_TYPES.ReturnStatement) {
           // handle return statement
 
+          const functionNode = getParentFunctionNode(invalidAncestor);
+
+          if (!functionNode) {
+            return;
+          }
+
+          const functionTSNode =
+            services.esTreeNodeToTSNodeMap.get(functionNode);
+
+          let functionType =
+            ts.isFunctionExpression(functionTSNode) ||
+            ts.isArrowFunction(functionTSNode)
+              ? getContextualType(checker, functionTSNode)
+              : services.getTypeAtLocation(functionNode);
+
+          if (!functionType) {
+            functionType = services.getTypeAtLocation(functionNode);
+          }
+
+          const callSignatures = tsutils.getCallSignaturesOfType(functionType);
+
+          const returnsVoid = callSignatures.every(signature => {
+            return tsutils.isTypeFlagSet(
+              signature.getReturnType(),
+              ts.TypeFlags.VoidLike,
+            );
+          });
+
+          if (returnsVoid) {
+            return;
+          }
+
+          // if (functionTSNode.type) {
+          // for (const signature of callSignatures) {
+          //   const signatureReturnType = signature.getReturnType();
+          //   console.log(checker.typeToString(signatureReturnType));
+          // }
+          // }
+
           if (options.ignoreVoidOperator) {
             // handle wrapping with `void`
             return context.report({
@@ -238,11 +305,6 @@ export default createRule<Options, MessageId>({
             suggest: [{ messageId: 'voidExprWrapVoid', fix: wrapVoidFix }],
           });
         }
-
-        context.report({
-          node,
-          messageId: 'invalidVoidExpr',
-        });
       },
     };
 
@@ -378,8 +440,6 @@ export default createRule<Options, MessageId>({
     function canFix(
       node: ReturnStatementWithArgument | TSESTree.ArrowFunctionExpression,
     ): boolean {
-      const services = getParserServices(context);
-
       const targetNode =
         node.type === AST_NODE_TYPES.ReturnStatement
           ? node.argument
