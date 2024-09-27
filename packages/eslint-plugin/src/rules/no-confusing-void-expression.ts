@@ -14,6 +14,7 @@ import {
   nullThrows,
   NullThrowsReasons,
 } from '../util';
+import { getParentFunctionNode } from '../util/getParentFunctionNode';
 
 export type Options = [
   {
@@ -93,29 +94,6 @@ export default createRule<Options, MessageId>({
   create(context, [options]) {
     const services = getParserServices(context);
     const checker = services.program.getTypeChecker();
-
-    function getParentFunctionNode(
-      node: TSESTree.Node,
-    ):
-      | TSESTree.ArrowFunctionExpression
-      | TSESTree.FunctionDeclaration
-      | TSESTree.FunctionExpression
-      | null {
-      let current = node.parent;
-      while (current) {
-        if (
-          current.type === AST_NODE_TYPES.ArrowFunctionExpression ||
-          current.type === AST_NODE_TYPES.FunctionDeclaration ||
-          current.type === AST_NODE_TYPES.FunctionExpression
-        ) {
-          return current;
-        }
-
-        current = current.parent;
-      }
-
-      return null;
-    }
 
     function isVoidReturningFunctionType(functionType: ts.Type): boolean {
       const callSignatures = tsutils.getCallSignaturesOfType(functionType);
