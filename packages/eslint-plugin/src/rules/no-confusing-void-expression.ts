@@ -118,11 +118,17 @@ export default createRule<Options, MessageId>({
       return null;
     }
 
-    function functionTypeReturnsVoid(functionType: ts.Type): boolean {
+    function isVoidReturningFunctionType(functionType: ts.Type): boolean {
       const callSignatures = tsutils.getCallSignaturesOfType(functionType);
 
       return callSignatures.some(signature => {
         const returnType = signature.getReturnType();
+
+        if (tsutils.isIntersectionType(returnType)) {
+          return tsutils
+            .unionTypeParts(returnType)
+            .every(part => tsutils.isTypeFlagSet(part, ts.TypeFlags.VoidLike));
+        }
 
         return tsutils
           .unionTypeParts(returnType)
@@ -154,10 +160,10 @@ export default createRule<Options, MessageId>({
         if (tsutils.isIntersectionType(part)) {
           return tsutils
             .intersectionTypeParts(part)
-            .every(functionTypeReturnsVoid);
+            .every(isVoidReturningFunctionType);
         }
 
-        return functionTypeReturnsVoid(part);
+        return isVoidReturningFunctionType(part);
       });
 
       return returnsVoid;
