@@ -120,9 +120,99 @@ function cool(input: string) {
 }
       `,
     },
+    {
+      code: `
+function f(): void {
+  return console.log('bar');
+}
+      `,
+    },
+    {
+      code: `
+const f = (): void => {
+  return console.log('bar');
+};
+      `,
+    },
+    {
+      code: `
+const f = (): void => console.log('bar');
+      `,
+    },
+    {
+      code: `
+type Foo = () => void;
+const test: Foo = () => console.log('foo');
+      `,
+    },
+    {
+      code: `
+declare function foo(arg: () => void): void;
+foo(() => console.log());
+      `,
+    },
+    {
+      code: `
+declare function foo(arg: (() => void) | (() => string)): void;
+foo(() => console.log());
+      `,
+    },
+    {
+      code: `
+declare function foo(arg: (() => void) | (() => string) | string): void;
+foo(() => console.log());
+      `,
+    },
+    {
+      code: `
+declare function foo(arg: () => void | string): void;
+foo(() => console.log());
+      `,
+    },
+    {
+      code: `
+declare function foo(options: { cb: () => void }): void;
+foo({ cb: () => console.log() });
+      `,
+    },
   ],
 
   invalid: [
+    {
+      code: `
+        function f() {
+          return console.log('bar');
+        }
+      `,
+      output: `
+        function f() {
+          console.log('bar');
+        }
+      `,
+      errors: [{ column: 18, messageId: 'invalidVoidExprReturnLast' }],
+    },
+    {
+      code: `
+        const f = () => {
+          return console.log('bar');
+        };
+      `,
+      output: `
+        const f = () => {
+          console.log('bar');
+        };
+      `,
+      errors: [{ column: 18, messageId: 'invalidVoidExprReturnLast' }],
+    },
+    {
+      code: `
+        const f = () => console.log('bar');
+      `,
+      output: `
+        const f = () => { console.log('bar'); };
+      `,
+      errors: [{ column: 25, messageId: 'invalidVoidExprArrow' }],
+    },
     {
       code: `
         const x = console.log('foo');
