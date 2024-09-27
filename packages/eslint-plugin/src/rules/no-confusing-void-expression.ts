@@ -434,6 +434,13 @@ export default createRule<Options, MessageId>({
         | TSESTree.FunctionDeclaration
         | TSESTree.FunctionExpression,
     ): boolean {
+      // Game plan:
+      //   - If the function has a type annotation, check if it includes `void`
+      //   - Otherwise, check if a function is a function expression or an arrow function
+      //   - If it is, get its contextual type, bail if we cannot get its contextual type
+      //   - Return based on whether the contextual type includes `void`
+      //   - Otherwise, report the function as a non `void` returning function
+
       const functionTSNode = services.esTreeNodeToTSNodeMap.get(functionNode);
 
       if (functionTSNode.type) {
@@ -450,13 +457,11 @@ export default createRule<Options, MessageId>({
       ) {
         const functionType = checker.getContextualType(functionTSNode);
 
-        if (!functionType) {
-          return false;
+        if (functionType) {
+          return tsutils
+            .unionTypeParts(functionType)
+            .some(isVoidReturningFunctionType);
         }
-
-        return tsutils
-          .unionTypeParts(functionType)
-          .some(isVoidReturningFunctionType);
       }
 
       return false;
