@@ -118,6 +118,38 @@ export default createRule<Options, MessageId>({
       return null;
     }
 
+    function functionReturnsVoid(
+      functionNode:
+        | TSESTree.ArrowFunctionExpression
+        | TSESTree.FunctionDeclaration
+        | TSESTree.FunctionExpression,
+    ): boolean {
+      const functionTSNode = services.esTreeNodeToTSNodeMap.get(functionNode);
+
+      let functionType =
+        ts.isFunctionExpression(functionTSNode) ||
+        ts.isArrowFunction(functionTSNode)
+          ? getContextualType(checker, functionTSNode)
+          : services.getTypeAtLocation(functionNode);
+
+      if (!functionType) {
+        functionType = services.getTypeAtLocation(functionNode);
+      }
+
+      const callSignatures = tsutils.getCallSignaturesOfType(functionType);
+
+      const returnsVoid = callSignatures.every(signature => {
+        const returnType = signature.getReturnType();
+        const returnTypeParts = tsutils.unionTypeParts(returnType);
+
+        return returnTypeParts.some(part =>
+          tsutils.isTypeFlagSet(part, ts.TypeFlags.VoidLike),
+        );
+      });
+
+      return returnsVoid;
+    }
+
     return {
       'AwaitExpression, CallExpression, TaggedTemplateExpression'(
         node:
@@ -146,31 +178,7 @@ export default createRule<Options, MessageId>({
         if (invalidAncestor.type === AST_NODE_TYPES.ArrowFunctionExpression) {
           // handle arrow function shorthand
 
-          const functionNode = invalidAncestor;
-
-          const functionTSNode =
-            services.esTreeNodeToTSNodeMap.get(functionNode);
-
-          let functionType =
-            ts.isFunctionExpression(functionTSNode) ||
-            ts.isArrowFunction(functionTSNode)
-              ? getContextualType(checker, functionTSNode)
-              : services.getTypeAtLocation(functionNode);
-
-          if (!functionType) {
-            functionType = services.getTypeAtLocation(functionNode);
-          }
-
-          const callSignatures = tsutils.getCallSignaturesOfType(functionType);
-
-          const returnsVoid = callSignatures.every(signature => {
-            const returnType = signature.getReturnType();
-            const returnTypeParts = tsutils.unionTypeParts(returnType);
-
-            return returnTypeParts.some(part =>
-              tsutils.isTypeFlagSet(part, ts.TypeFlags.VoidLike),
-            );
-          });
+          const returnsVoid = functionReturnsVoid(invalidAncestor);
 
           if (returnsVoid) {
             return;
@@ -237,29 +245,7 @@ export default createRule<Options, MessageId>({
             return;
           }
 
-          const functionTSNode =
-            services.esTreeNodeToTSNodeMap.get(functionNode);
-
-          let functionType =
-            ts.isFunctionExpression(functionTSNode) ||
-            ts.isArrowFunction(functionTSNode)
-              ? getContextualType(checker, functionTSNode)
-              : services.getTypeAtLocation(functionNode);
-
-          if (!functionType) {
-            functionType = services.getTypeAtLocation(functionNode);
-          }
-
-          const callSignatures = tsutils.getCallSignaturesOfType(functionType);
-
-          const returnsVoid = callSignatures.every(signature => {
-            const returnType = signature.getReturnType();
-            const returnTypeParts = tsutils.unionTypeParts(returnType);
-
-            return returnTypeParts.some(part =>
-              tsutils.isTypeFlagSet(part, ts.TypeFlags.VoidLike),
-            );
-          });
+          const returnsVoid = functionReturnsVoid(functionNode);
 
           if (returnsVoid) {
             return;
