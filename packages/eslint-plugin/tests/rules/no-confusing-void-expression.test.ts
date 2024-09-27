@@ -175,9 +175,61 @@ declare function foo(options: { cb: () => void }): void;
 foo({ cb: () => console.log() });
       `,
     },
+    {
+      code: `
+const q = {
+  foo: { bar: () => console.log() },
+} as {
+  foo: { bar: () => void };
+};
+      `,
+    },
+    {
+      code: `
+interface Foo {
+  foo: () => void;
+}
+
+function bar(): Foo {
+  return {
+    foo: () => console.log(),
+  };
+}
+      `,
+    },
+    {
+      code: `
+type HigherOrderType = () => () => () => void;
+const x: HigherOrderType = () => () => () => console.log();
+      `,
+    },
   ],
 
   invalid: [
+    {
+      code: `
+        function f(): any {
+          return console.log('bar');
+        }
+      `,
+      output: `
+        function f(): any {
+          console.log('bar');
+        }
+      `,
+      errors: [{ column: 18, messageId: 'invalidVoidExprReturnLast' }],
+    },
+    {
+      code: `
+declare function foo(arg: () => any): void;
+foo(() => console.log());
+      `,
+      output: `
+declare function foo(arg: () => any): void;
+foo(() => { console.log(); });
+      `,
+      errors: [{ column: 11, messageId: 'invalidVoidExprArrow' }],
+    },
     {
       code: `
         function f() {
