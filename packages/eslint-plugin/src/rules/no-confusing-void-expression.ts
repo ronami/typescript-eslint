@@ -136,7 +136,7 @@ export default createRule<Options, MessageId>({
       });
     }
 
-    function functionReturnsVoid(
+    function isVoidReturningFunctionNode(
       functionNode:
         | TSESTree.ArrowFunctionExpression
         | TSESTree.FunctionDeclaration
@@ -156,7 +156,7 @@ export default createRule<Options, MessageId>({
 
       const functionTypeParts = tsutils.unionTypeParts(functionType);
 
-      const returnsVoid = functionTypeParts.some(part => {
+      return functionTypeParts.some(part => {
         if (tsutils.isIntersectionType(part)) {
           return tsutils
             .intersectionTypeParts(part)
@@ -165,8 +165,6 @@ export default createRule<Options, MessageId>({
 
         return isVoidReturningFunctionType(part);
       });
-
-      return returnsVoid;
     }
 
     return {
@@ -197,7 +195,7 @@ export default createRule<Options, MessageId>({
         if (invalidAncestor.type === AST_NODE_TYPES.ArrowFunctionExpression) {
           // handle arrow function shorthand
 
-          const returnsVoid = functionReturnsVoid(invalidAncestor);
+          const returnsVoid = isVoidReturningFunctionNode(invalidAncestor);
 
           if (returnsVoid) {
             return;
@@ -264,7 +262,7 @@ export default createRule<Options, MessageId>({
             return;
           }
 
-          const returnsVoid = functionReturnsVoid(functionNode);
+          const returnsVoid = isVoidReturningFunctionNode(functionNode);
 
           if (returnsVoid) {
             return;
