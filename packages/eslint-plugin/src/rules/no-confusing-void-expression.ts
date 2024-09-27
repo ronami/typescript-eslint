@@ -1,3 +1,5 @@
+/* eslint-disable no-console */
+
 import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 import * as tsutils from 'ts-api-utils';
@@ -136,9 +138,29 @@ export default createRule<Options, MessageId>({
         functionType = services.getTypeAtLocation(functionNode);
       }
 
+      console.log({
+        isFunctionExpression: ts.isFunctionExpression(functionTSNode),
+        isArrowFunction: ts.isArrowFunction(functionTSNode),
+        contextualType: checker.typeToString(functionType),
+      });
+
+      const functionTypeParts = tsutils.unionTypeParts(functionType);
+
+      functionTypeParts.forEach(part => {
+        console.log({
+          part: checker.typeToString(part),
+          isUnionType: tsutils.isUnionType(part),
+          isIntersectionType: tsutils.isIntersectionType(part),
+        });
+      });
+
       const callSignatures = tsutils.getCallSignaturesOfType(functionType);
 
-      const returnsVoid = callSignatures.every(signature => {
+      console.log({
+        callSignatures,
+      });
+
+      const returnsVoid = callSignatures.some(signature => {
         const returnType = signature.getReturnType();
         const returnTypeParts = tsutils.unionTypeParts(returnType);
 
