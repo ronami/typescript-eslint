@@ -268,14 +268,12 @@ export default createRule<Options, MessageId>({
 
           const functionNode = getParentFunctionNode(invalidAncestor);
 
-          if (!functionNode) {
-            return;
-          }
+          if (functionNode) {
+            const returnsVoid = isVoidReturningFunctionNode(functionNode);
 
-          const returnsVoid = isVoidReturningFunctionNode(functionNode);
-
-          if (returnsVoid) {
-            return;
+            if (returnsVoid) {
+              return;
+            }
           }
 
           if (options.ignoreVoidOperator) {
