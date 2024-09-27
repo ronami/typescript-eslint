@@ -1,5 +1,3 @@
-/* eslint-disable no-console */
-
 import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 import * as tsutils from 'ts-api-utils';
@@ -120,6 +118,18 @@ export default createRule<Options, MessageId>({
       return null;
     }
 
+    function functionTypeReturnsVoid(functionType: ts.Type): boolean {
+      const callSignatures = tsutils.getCallSignaturesOfType(functionType);
+
+      return callSignatures.some(signature => {
+        const returnType = signature.getReturnType();
+
+        return tsutils
+          .unionTypeParts(returnType)
+          .some(part => tsutils.isTypeFlagSet(part, ts.TypeFlags.VoidLike));
+      });
+    }
+
     function functionReturnsVoid(
       functionNode:
         | TSESTree.ArrowFunctionExpression
@@ -138,35 +148,16 @@ export default createRule<Options, MessageId>({
         functionType = services.getTypeAtLocation(functionNode);
       }
 
-      console.log({
-        isFunctionExpression: ts.isFunctionExpression(functionTSNode),
-        isArrowFunction: ts.isArrowFunction(functionTSNode),
-        contextualType: checker.typeToString(functionType),
-      });
-
       const functionTypeParts = tsutils.unionTypeParts(functionType);
 
-      functionTypeParts.forEach(part => {
-        console.log({
-          part: checker.typeToString(part),
-          isUnionType: tsutils.isUnionType(part),
-          isIntersectionType: tsutils.isIntersectionType(part),
-        });
-      });
+      const returnsVoid = functionTypeParts.some(part => {
+        if (tsutils.isIntersectionType(part)) {
+          return tsutils
+            .intersectionTypeParts(part)
+            .every(functionTypeReturnsVoid);
+        }
 
-      const callSignatures = tsutils.getCallSignaturesOfType(functionType);
-
-      console.log({
-        callSignatures,
-      });
-
-      const returnsVoid = callSignatures.some(signature => {
-        const returnType = signature.getReturnType();
-        const returnTypeParts = tsutils.unionTypeParts(returnType);
-
-        return returnTypeParts.some(part =>
-          tsutils.isTypeFlagSet(part, ts.TypeFlags.VoidLike),
-        );
+        return functionTypeReturnsVoid(part);
       });
 
       return returnsVoid;
