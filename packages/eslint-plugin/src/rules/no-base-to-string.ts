@@ -59,13 +59,18 @@ export default createRule<Options, MessageIds>({
     const checker = services.program.getTypeChecker();
     const ignoredTypeNames = option.ignoredTypeNames ?? [];
 
-    function checkExpression(node: TSESTree.Expression, type?: ts.Type): void {
+    function checkExpression(
+      node: TSESTree.Expression,
+      checkPrimitive = false,
+      type?: ts.Type,
+    ): void {
       if (node.type === AST_NODE_TYPES.Literal) {
         return;
       }
 
       const certainty = collectToStringCertainty(
         type ?? services.getTypeAtLocation(node),
+        checkPrimitive,
       );
       if (certainty === Usefulness.Always) {
         return;
@@ -81,7 +86,10 @@ export default createRule<Options, MessageIds>({
       });
     }
 
-    function collectToStringCertainty(type: ts.Type): Usefulness {
+    function collectToStringCertainty(
+      type: ts.Type,
+      checkPrimitive: boolean,
+    ): Usefulness {
       const toString = checker.getPropertyOfType(type, 'toString');
       const declarations = toString?.getDeclarations();
       if (!toString || !declarations || declarations.length === 0) {
@@ -111,7 +119,10 @@ export default createRule<Options, MessageIds>({
 
       if (type.isIntersection()) {
         for (const subType of type.types) {
-          const subtypeUsefulness = collectToStringCertainty(subType);
+          const subtypeUsefulness = collectToStringCertainty(
+            subType,
+            checkPrimitive,
+          );
 
           if (subtypeUsefulness === Usefulness.Always) {
             return Usefulness.Always;
@@ -121,13 +132,7 @@ export default createRule<Options, MessageIds>({
         return Usefulness.Never;
       }
 
-      if (
-        tsutils.getWellKnownSymbolPropertyOfType(
-          type,
-          'toPrimitive',
-          checker,
-        ) != null
-      ) {
+      if (checkPrimitive && hasPrimitiveRepresentation(type)) {
         return Usefulness.Always;
       }
 
@@ -139,7 +144,10 @@ export default createRule<Options, MessageIds>({
       let someSubtypeUseful = false;
 
       for (const subType of type.types) {
-        const subtypeUsefulness = collectToStringCertainty(subType);
+        const subtypeUsefulness = collectToStringCertainty(
+          subType,
+          checkPrimitive,
+        );
 
         if (subtypeUsefulness !== Usefulness.Always && allSubtypesUseful) {
           allSubtypesUseful = false;
@@ -161,6 +169,16 @@ export default createRule<Options, MessageIds>({
       return Usefulness.Never;
     }
 
+    function hasPrimitiveRepresentation(type: ts.Type): boolean {
+      return (
+        tsutils.getWellKnownSymbolPropertyOfType(
+          type,
+          'toPrimitive',
+          checker,
+        ) != null
+      );
+    }
+
     return {
       'AssignmentExpression[operator = "+="], BinaryExpression[operator = "+"]'(
         node: TSESTree.AssignmentExpression | TSESTree.BinaryExpression,
@@ -169,12 +187,12 @@ export default createRule<Options, MessageIds>({
         const rightType = services.getTypeAtLocation(node.right);
 
         if (getTypeName(checker, leftType) === 'string') {
-          checkExpression(node.right, rightType);
+          checkExpression(node.right, true, rightType);
         } else if (
           getTypeName(checker, rightType) === 'string' &&
           node.left.type !== AST_NODE_TYPES.PrivateIdentifier
         ) {
-          checkExpression(node.left, leftType);
+          checkExpression(node.left, true, leftType);
         }
       },
       'CallExpression > MemberExpression.callee > Identifier[name = "toString"].property'(
@@ -188,7 +206,7 @@ export default createRule<Options, MessageIds>({
           return;
         }
         for (const expression of node.expressions) {
-          checkExpression(expression);
+          checkExpression(expression, true);
         }
       },
     };
