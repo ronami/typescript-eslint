@@ -13,6 +13,7 @@ import {
   getConstrainedTypeAtLocation,
   getParserServices,
   getTypeName,
+  hasPrimitiveRepresentation,
   isTypeAnyType,
   isTypeFlagSet,
   isTypeNeverType,
@@ -163,6 +164,7 @@ export default createRule<Options, MessageId>({
       return (
         isTypeFlagSet(innerType, TypeFlags.StringLike) ||
         typeMatchesSomeSpecifier(innerType, allow, program) ||
+        hasPrimitiveRepresentation(checker, innerType) ||
         enabledOptionTesters.some(({ tester }) =>
           tester(innerType, checker, recursivelyCheckType),
         )

@@ -10,6 +10,7 @@ export * from './getStringLength';
 export * from './getTextWithParentheses';
 export * from './getThisExpression';
 export * from './getWrappingFixer';
+export * from './hasPrimitiveRepresentation';
 export * from './isNodeEqual';
 export * from './isNullLiteral';
 export * from './isStartOfExpressionStatement';

@@ -7,6 +7,7 @@ import {
   getConstrainedTypeAtLocation,
   getParserServices,
   getTypeName,
+  hasPrimitiveRepresentation,
   isTypeAnyType,
   isTypeFlagSet,
 } from '../util';
@@ -190,7 +191,8 @@ export default createRule<Options, MessageIds>({
               ? !allowRegExp ||
                 tsutils.isTypeFlagSet(otherType, ts.TypeFlags.NumberLike)
               : (!allowAny && isTypeAnyType(subBaseType)) ||
-                isDeeplyObjectType(subBaseType)
+                (isDeeplyObjectType(subBaseType) &&
+                  !hasPrimitiveRepresentation(typeChecker, subBaseType))
           ) {
             context.report({
               data: {

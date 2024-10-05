@@ -1,9 +1,13 @@
 import type { TSESTree } from '@typescript-eslint/utils';
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
-import * as tsutils from 'ts-api-utils';
 import * as ts from 'typescript';
 
-import { createRule, getParserServices, getTypeName } from '../util';
+import {
+  createRule,
+  getParserServices,
+  getTypeName,
+  hasPrimitiveRepresentation,
+} from '../util';
 
 enum Usefulness {
   Always = 'always',
@@ -132,7 +136,7 @@ export default createRule<Options, MessageIds>({
         return Usefulness.Never;
       }
 
-      if (checkPrimitive && hasPrimitiveRepresentation(type)) {
+      if (checkPrimitive && hasPrimitiveRepresentation(checker, type)) {
         return Usefulness.Always;
       }
 
@@ -167,16 +171,6 @@ export default createRule<Options, MessageIds>({
       }
 
       return Usefulness.Never;
-    }
-
-    function hasPrimitiveRepresentation(type: ts.Type): boolean {
-      return (
-        tsutils.getWellKnownSymbolPropertyOfType(
-          type,
-          'toPrimitive',
-          checker,
-        ) != null
-      );
     }
 
     return {
