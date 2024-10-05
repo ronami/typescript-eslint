@@ -29,7 +29,10 @@ const literalListNeedParen: string[] = [
   '{}.constructor()',
   '() => {}',
   'function() {}',
-  '{ [Symbol.toPrimitive]: () => "" }',
+];
+
+const literalListNeedParenNoToString: string[] = [
+  '{ [Symbol.toPrimitive]: () => "foo" }',
 ];
 
 const literalList = [...literalListBasic, ...literalListNeedParen];
@@ -39,14 +42,18 @@ const literalListWrapped = [
   ...literalListNeedParen.map(i => `(${i})`),
 ];
 
+const literalListNoToString = literalListNeedParenNoToString.map(i => `(${i})`);
+
 ruleTester.run('no-base-to-string', rule, {
   valid: [
     // template
-    ...literalList.map(i => `\`\${${i}}\`;`),
+    ...[...literalList, ...literalListNoToString].map(i => `\`\${${i}}\`;`),
 
     // operator + +=
-    ...literalListWrapped.flatMap(l =>
-      literalListWrapped.map(r => `${l} + ${r};`),
+    ...[...literalListWrapped, ...literalListNoToString].flatMap(l =>
+      [...literalListWrapped, ...literalListNoToString].map(
+        r => `${l} + ${r};`,
+      ),
     ),
 
     // toString()
@@ -57,6 +64,13 @@ ruleTester.run('no-base-to-string', rule, {
       i => `
         let value = ${i};
         value.toString();
+        let text = \`\${value}\`;
+      `,
+    ),
+
+    ...literalListNoToString.map(
+      i => `
+        let value = ${i};
         let text = \`\${value}\`;
       `,
     ),
