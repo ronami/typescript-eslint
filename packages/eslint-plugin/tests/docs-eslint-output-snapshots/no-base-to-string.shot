@@ -42,6 +42,12 @@ const literalWithToString = {
 };
 
 \`Value: \${literalWithToString}\`;
+
+const toPrimitiveSymbol = {
+  [Symbol.toPrimitive]: () => '',
+};
+
+\`Value: \${toPrimitiveSymbol}\`;
 "
 `;
 

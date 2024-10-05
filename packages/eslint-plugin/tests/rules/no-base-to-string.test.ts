@@ -29,6 +29,7 @@ const literalListNeedParen: string[] = [
   '{}.constructor()',
   '() => {}',
   'function() {}',
+  '{ [Symbol.toPrimitive]: () => "" }',
 ];
 
 const literalList = [...literalListBasic, ...literalListNeedParen];
