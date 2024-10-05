@@ -1,5 +1,6 @@
 import type { TSESTree } from '@typescript-eslint/utils';
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
+import * as tsutils from 'ts-api-utils';
 import * as ts from 'typescript';
 
 import { createRule, getParserServices, getTypeName } from '../util';
@@ -118,6 +119,16 @@ export default createRule<Options, MessageIds>({
         }
 
         return Usefulness.Never;
+      }
+
+      if (
+        tsutils.getWellKnownSymbolPropertyOfType(
+          type,
+          'toPrimitive',
+          checker,
+        ) != null
+      ) {
+        return Usefulness.Always;
       }
 
       if (!type.isUnion()) {
