@@ -159,23 +159,18 @@ export default createRule<Options, MessageIds>({
     function isArrayType(type: ts.Type): boolean {
       return tsutils
         .unionTypeParts(type)
-        .every(unionPart =>
-          tsutils
-            .intersectionTypeParts(unionPart)
-            .every(t => checker.isArrayType(t) || checker.isTupleType(t)),
+        .every(
+          unionPart =>
+            checker.isArrayType(unionPart) || checker.isTupleType(unionPart),
         );
     }
 
-    function getFlatArrayOrTupleTypes(type: ts.Type): ts.Type[] | null {
-      if (isArrayType(type)) {
-        return tsutils
-          .unionTypeParts(type)
-          .flatMap(unionPart =>
-            checker.getTypeArguments(unionPart as ts.TypeReference),
-          );
-      }
-
-      return null;
+    function getFlatArrayOrTupleTypes(type: ts.Type): ts.Type[] {
+      return tsutils
+        .unionTypeParts(type)
+        .flatMap(unionPart =>
+          checker.getTypeArguments(unionPart as ts.TypeReference),
+        );
     }
 
     return {
@@ -204,13 +199,13 @@ export default createRule<Options, MessageIds>({
         node: TSESTree.Expression,
       ): void {
         const memberExpr = node.parent as TSESTree.MemberExpression;
-
         const maybeArrayType = services.getTypeAtLocation(memberExpr.object);
-        const arrayOrTupleTypes = getFlatArrayOrTupleTypes(maybeArrayType);
 
-        if (!arrayOrTupleTypes) {
+        if (!isArrayType(maybeArrayType)) {
           return;
         }
+
+        const arrayOrTupleTypes = getFlatArrayOrTupleTypes(maybeArrayType);
 
         checkExpression(
           memberExpr.parent as TSESTree.CallExpression,
