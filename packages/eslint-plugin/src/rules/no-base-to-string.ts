@@ -172,6 +172,27 @@ export default createRule<Options, MessageIds>({
         const memberExpr = node.parent as TSESTree.MemberExpression;
         checkExpression(memberExpr.object);
       },
+      'CallExpression > MemberExpression.callee > Identifier[name = "join"].property'(
+        node: TSESTree.Expression,
+      ): void {
+        const memberExpr = node.parent as TSESTree.MemberExpression;
+        const maybeArray = memberExpr.object;
+        const maybeArrayType = services.getTypeAtLocation(maybeArray);
+
+        if (
+          !checker.isArrayType(maybeArrayType) &&
+          !checker.isTupleType(maybeArrayType)
+        ) {
+          return;
+        }
+
+        const arrayType = checker.getTypeArguments(maybeArrayType)[0];
+
+        checkExpression(
+          memberExpr.parent as TSESTree.CallExpression,
+          arrayType,
+        );
+      },
       TemplateLiteral(node: TSESTree.TemplateLiteral): void {
         if (node.parent.type === AST_NODE_TYPES.TaggedTemplateExpression) {
           return;
