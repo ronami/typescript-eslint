@@ -166,7 +166,7 @@ export default createRule<Options, MessageIds>({
         );
     }
 
-    function getArrayOrTupleType(type: ts.Type): ts.Type[] | null {
+    function getFlatArrayOrTupleTypes(type: ts.Type): ts.Type[] | null {
       if (isArrayType(type)) {
         return tsutils
           .unionTypeParts(type)
@@ -206,7 +206,7 @@ export default createRule<Options, MessageIds>({
         const memberExpr = node.parent as TSESTree.MemberExpression;
 
         const maybeArrayType = services.getTypeAtLocation(memberExpr.object);
-        const arrayOrTupleTypes = getArrayOrTupleType(maybeArrayType);
+        const arrayOrTupleTypes = getFlatArrayOrTupleTypes(maybeArrayType);
 
         if (!arrayOrTupleTypes) {
           return;
