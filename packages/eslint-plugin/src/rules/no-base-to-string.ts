@@ -58,21 +58,35 @@ export default createRule<Options, MessageIds>({
     const checker = services.program.getTypeChecker();
     const ignoredTypeNames = option.ignoredTypeNames ?? [];
 
-    function checkExpression(node: TSESTree.Expression, type?: ts.Type): void {
+    function checkExpression(
+      node: TSESTree.Expression,
+      type?: ts.Type | ts.Type[],
+    ): void {
       if (node.type === AST_NODE_TYPES.Literal) {
         return;
       }
 
-      const certainty = collectToStringCertainty(
-        type ?? services.getTypeAtLocation(node),
-      );
-      if (certainty === Usefulness.Always) {
+      const ty = type ?? services.getTypeAtLocation(node);
+
+      const certainty = Array.isArray(ty)
+        ? ty.map(collectToStringCertainty)
+        : collectToStringCertainty(ty);
+
+      if (
+        Array.isArray(certainty)
+          ? certainty.every(usefulness => usefulness === Usefulness.Always)
+          : certainty === Usefulness.Always
+      ) {
         return;
       }
 
       context.report({
         data: {
-          certainty,
+          certainty: Array.isArray(certainty)
+            ? certainty.some(x => x === Usefulness.Sometimes)
+              ? Usefulness.Sometimes
+              : Usefulness.Never
+            : certainty,
           name: context.sourceCode.getText(node),
         },
         messageId: 'baseToString',
@@ -150,6 +164,18 @@ export default createRule<Options, MessageIds>({
       return Usefulness.Never;
     }
 
+    function getArrayOrTupleType(type: ts.Type): ts.Type | ts.Type[] | null {
+      if (checker.isArrayType(type)) {
+        return checker.getTypeArguments(type)[0];
+      }
+
+      if (checker.isTupleType(type)) {
+        return checker.getTypeArguments(type) as ts.Type[];
+      }
+
+      return null;
+    }
+
     return {
       'AssignmentExpression[operator = "+="], BinaryExpression[operator = "+"]'(
         node: TSESTree.AssignmentExpression | TSESTree.BinaryExpression,
@@ -176,22 +202,24 @@ export default createRule<Options, MessageIds>({
         node: TSESTree.Expression,
       ): void {
         const memberExpr = node.parent as TSESTree.MemberExpression;
-        const maybeArray = memberExpr.object;
-        const maybeArrayType = services.getTypeAtLocation(maybeArray);
+        const maybeArrayType = services.getTypeAtLocation(memberExpr.object);
+        const type = getArrayOrTupleType(maybeArrayType);
 
-        if (
-          !checker.isArrayType(maybeArrayType) &&
-          !checker.isTupleType(maybeArrayType)
-        ) {
+        if (!type) {
           return;
         }
 
-        const arrayType = checker.getTypeArguments(maybeArrayType)[0];
+        // if (
+        //   !checker.isArrayType(maybeArrayType) &&
+        //   !checker.isTupleType(maybeArrayType)
+        // ) {
+        //   return;
+        // }
 
-        checkExpression(
-          memberExpr.parent as TSESTree.CallExpression,
-          arrayType,
-        );
+        // const arrayType = checker.getTypeArguments(maybeArrayType)[0];
+
+        const CallExpression = memberExpr.parent as TSESTree.CallExpression;
+        checkExpression(CallExpression, type);
       },
       TemplateLiteral(node: TSESTree.TemplateLiteral): void {
         if (node.parent.type === AST_NODE_TYPES.TaggedTemplateExpression) {

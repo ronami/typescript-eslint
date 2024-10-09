@@ -19125,6 +19125,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"test-project@workspace:packages/test-project":
+  version: 0.0.0-use.local
+  resolution: "test-project@workspace:packages/test-project"
+  dependencies:
+    "@typescript-eslint/eslint-plugin": 8.8.1
+    "@typescript-eslint/parser": 8.8.1
+    eslint: ^9.0.0
+    typescript: "*"
+  languageName: unknown
+  linkType: soft
+
 "text-table@npm:^0.2.0":
   version: 0.2.0
   resolution: "text-table@npm:0.2.0"
