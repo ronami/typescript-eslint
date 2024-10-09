@@ -1,5 +1,6 @@
 import type { TSESTree } from '@typescript-eslint/utils';
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
+import * as tsutils from 'ts-api-utils';
 import * as ts from 'typescript';
 
 import { createRule, getParserServices, getTypeName } from '../util';
@@ -60,33 +61,24 @@ export default createRule<Options, MessageIds>({
 
     function checkExpression(
       node: TSESTree.Expression,
-      type?: ts.Type | ts.Type[],
+      types?: ts.Type[],
     ): void {
       if (node.type === AST_NODE_TYPES.Literal) {
         return;
       }
 
-      const ty = type ?? services.getTypeAtLocation(node);
+      const ty = types ?? [services.getTypeAtLocation(node)];
+      const certainty = ty.map(collectToStringCertainty);
 
-      const certainty = Array.isArray(ty)
-        ? ty.map(collectToStringCertainty)
-        : collectToStringCertainty(ty);
-
-      if (
-        Array.isArray(certainty)
-          ? certainty.every(usefulness => usefulness === Usefulness.Always)
-          : certainty === Usefulness.Always
-      ) {
+      if (certainty.every(usefulness => usefulness === Usefulness.Always)) {
         return;
       }
 
       context.report({
         data: {
-          certainty: Array.isArray(certainty)
-            ? certainty.some(x => x === Usefulness.Sometimes)
-              ? Usefulness.Sometimes
-              : Usefulness.Never
-            : certainty,
+          certainty: certainty.some(x => x === Usefulness.Sometimes)
+            ? Usefulness.Sometimes
+            : Usefulness.Never,
           name: context.sourceCode.getText(node),
         },
         messageId: 'baseToString',
@@ -164,13 +156,23 @@ export default createRule<Options, MessageIds>({
       return Usefulness.Never;
     }
 
-    function getArrayOrTupleType(type: ts.Type): ts.Type | ts.Type[] | null {
-      if (checker.isArrayType(type)) {
-        return checker.getTypeArguments(type)[0];
-      }
+    function isArrayType(type: ts.Type): boolean {
+      return tsutils
+        .unionTypeParts(type)
+        .every(unionPart =>
+          tsutils
+            .intersectionTypeParts(unionPart)
+            .every(t => checker.isArrayType(t) || checker.isTupleType(t)),
+        );
+    }
 
-      if (checker.isTupleType(type)) {
-        return checker.getTypeArguments(type) as ts.Type[];
+    function getArrayOrTupleType(type: ts.Type): ts.Type[] | null {
+      if (isArrayType(type)) {
+        return tsutils
+          .unionTypeParts(type)
+          .flatMap(unionPart =>
+            checker.getTypeArguments(unionPart as ts.TypeReference),
+          );
       }
 
       return null;
@@ -184,12 +186,12 @@ export default createRule<Options, MessageIds>({
         const rightType = services.getTypeAtLocation(node.right);
 
         if (getTypeName(checker, leftType) === 'string') {
-          checkExpression(node.right, rightType);
+          checkExpression(node.right, [rightType]);
         } else if (
           getTypeName(checker, rightType) === 'string' &&
           node.left.type !== AST_NODE_TYPES.PrivateIdentifier
         ) {
-          checkExpression(node.left, leftType);
+          checkExpression(node.left, [leftType]);
         }
       },
       'CallExpression > MemberExpression.callee > Identifier[name = "toString"].property'(
@@ -202,24 +204,18 @@ export default createRule<Options, MessageIds>({
         node: TSESTree.Expression,
       ): void {
         const memberExpr = node.parent as TSESTree.MemberExpression;
-        const maybeArrayType = services.getTypeAtLocation(memberExpr.object);
-        const type = getArrayOrTupleType(maybeArrayType);
 
-        if (!type) {
+        const maybeArrayType = services.getTypeAtLocation(memberExpr.object);
+        const arrayOrTupleTypes = getArrayOrTupleType(maybeArrayType);
+
+        if (!arrayOrTupleTypes) {
           return;
         }
 
-        // if (
-        //   !checker.isArrayType(maybeArrayType) &&
-        //   !checker.isTupleType(maybeArrayType)
-        // ) {
-        //   return;
-        // }
-
-        // const arrayType = checker.getTypeArguments(maybeArrayType)[0];
-
-        const CallExpression = memberExpr.parent as TSESTree.CallExpression;
-        checkExpression(CallExpression, type);
+        checkExpression(
+          memberExpr.parent as TSESTree.CallExpression,
+          arrayOrTupleTypes,
+        );
       },
       TemplateLiteral(node: TSESTree.TemplateLiteral): void {
         if (node.parent.type === AST_NODE_TYPES.TaggedTemplateExpression) {
