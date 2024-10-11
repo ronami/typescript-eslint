@@ -266,6 +266,21 @@ _any_ as never;
           },
         ],
       },
+      // an error type `any`
+      {
+        code: `
+const bar = foo as number;
+        `,
+        errors: [
+          {
+            column: 13,
+            endColumn: 26,
+            endLine: 2,
+            line: 2,
+            messageId: 'unsafeAnyTypeAssertion',
+          },
+        ],
+      },
     ],
   });
 });
