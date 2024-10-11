@@ -73,22 +73,43 @@ export default createRule({
       return false;
     }
 
-    function checkExpression(
+    function compareTypes(
       node: TSESTree.TSAsExpression | TSESTree.TSTypeAssertion,
-    ): void {
-      const nodeType = getConstrainedTypeAtLocation(services, node.expression);
-
-      const assertedType = getConstrainedTypeAtLocation(
-        services,
-        node.typeAnnotation,
-      );
-
-      if (isTypeUnchanged(nodeType, assertedType)) {
-        return;
+      type: ts.Type,
+      assertedType: ts.Type,
+    ): boolean {
+      if (isTypeUnchanged(type, assertedType)) {
+        return false;
       }
 
       if (isTypeUnknownType(assertedType)) {
-        return;
+        return false;
+      }
+
+      if (checker.isArrayType(type) && checker.isArrayType(assertedType)) {
+        return compareTypes(
+          node,
+          checker.getTypeArguments(type)[0],
+          checker.getTypeArguments(assertedType)[0],
+        );
+      }
+
+      const tsNode = services.esTreeNodeToTSNodeMap.get(node.expression);
+      const tsAssertedNode = services.esTreeNodeToTSNodeMap.get(
+        node.typeAnnotation,
+      );
+
+      if (
+        tsutils.isThenableType(checker, tsNode, type) &&
+        tsutils.isTypeReference(type) &&
+        tsutils.isThenableType(checker, tsAssertedNode, assertedType) &&
+        tsutils.isTypeReference(assertedType)
+      ) {
+        return compareTypes(
+          node,
+          checker.getTypeArguments(type)[0],
+          checker.getTypeArguments(assertedType)[0],
+        );
       }
 
       if (
@@ -101,48 +122,69 @@ export default createRule({
           context.sourceCode,
         )
       ) {
-        return context.report({
+        context.report({
           node,
           messageId: 'unsafeFunctionTypeAssertion',
         });
+        return true;
       }
 
-      if (isTypeAnyType(nodeType)) {
-        return context.report({
+      if (isTypeAnyType(type)) {
+        context.report({
           node,
           messageId: 'unsafeAnyTypeAssertion',
         });
+        return true;
       }
 
-      if (isTypeNeverType(nodeType)) {
-        return context.report({
+      if (isTypeNeverType(type)) {
+        context.report({
           node,
           messageId: 'unsafeNeverTypeAssertion',
         });
+        return true;
       }
 
       if (isTypeAnyType(assertedType)) {
-        return context.report({
+        context.report({
           node,
           messageId: 'unsafeAnyTypeAssertion',
         });
+        return true;
       }
 
-      const nodeWidenedType = checker.getWidenedType(nodeType);
+      return false;
+    }
 
-      const isAssertionSafe = checker.isTypeAssignableTo(
-        nodeWidenedType,
-        assertedType,
+    function checkExpression(
+      node: TSESTree.TSAsExpression | TSESTree.TSTypeAssertion,
+    ): void {
+      const nodeType = getConstrainedTypeAtLocation(services, node.expression);
+
+      const assertedType = getConstrainedTypeAtLocation(
+        services,
+        node.typeAnnotation,
       );
 
-      if (!isAssertionSafe) {
-        return context.report({
-          node,
-          messageId: 'unsafeTypeAssertion',
-          data: {
-            type: checker.typeToString(nodeType),
-          },
-        });
+      const incompatible = compareTypes(node, nodeType, assertedType);
+
+      if (!incompatible) {
+        const nodeWidenedType = checker.getWidenedType(nodeType);
+
+        const isAssertionSafe = checker.isTypeAssignableTo(
+          nodeWidenedType,
+          assertedType,
+        );
+
+        if (!isAssertionSafe) {
+          return context.report({
+            node,
+            messageId: 'unsafeTypeAssertion',
+            data: {
+              type: checker.typeToString(nodeType),
+            },
+          });
+        }
       }
     }
 
