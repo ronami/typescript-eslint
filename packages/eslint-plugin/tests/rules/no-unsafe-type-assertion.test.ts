@@ -23,6 +23,10 @@ const b = a as string | number;
       `,
       `
 declare const a: string;
+const b = <string | number>a;
+      `,
+      `
+declare const a: string;
 const b = a as string | number as string | number | boolean;
       `,
       `
@@ -55,6 +59,24 @@ const b = a as string;
               type: 'string | number',
             },
             endColumn: 22,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+declare const a: string | number;
+const b = <string>a;
+        `,
+        errors: [
+          {
+            column: 11,
+            data: {
+              type: 'string | number',
+            },
+            endColumn: 20,
             endLine: 3,
             line: 3,
             messageId: 'unsafeTypeAssertion',
@@ -146,6 +168,24 @@ const b = a as string;
             endColumn: 22,
             endLine: 6,
             line: 6,
+            messageId: 'unsafeTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+declare const foo: readonly number[];
+const bar = foo as number[];
+        `,
+        errors: [
+          {
+            column: 13,
+            data: {
+              type: 'readonly number[]',
+            },
+            endColumn: 28,
+            endLine: 3,
+            line: 3,
             messageId: 'unsafeTypeAssertion',
           },
         ],
@@ -672,42 +712,6 @@ var foo = {} as {
 //           },
 //           endColumn: 23,
 //           line: 13,
-//           messageId: 'unsafeTypeAssertion',
-//         },
-//       ],
-//     },
-//     {
-//       code: `
-// type Foo = Readonly<Required<{ hello?: string }>>;
-
-// declare const foo: {};
-// const bar = foo as Foo;
-//       `,
-//       errors: [
-//         {
-//           column: 13,
-//           data: {
-//             type: '{}',
-//           },
-//           endColumn: 23,
-//           line: 5,
-//           messageId: 'unsafeTypeAssertion',
-//         },
-//       ],
-//     },
-//     {
-//       code: `
-// declare const foo: readonly number[];
-// const bar = foo as number[];
-//       `,
-//       errors: [
-//         {
-//           column: 13,
-//           data: {
-//             type: 'readonly number[]',
-//           },
-//           endColumn: 28,
-//           line: 3,
 //           messageId: 'unsafeTypeAssertion',
 //         },
 //       ],
