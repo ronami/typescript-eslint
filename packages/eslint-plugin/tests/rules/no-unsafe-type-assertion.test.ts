@@ -33,6 +33,14 @@ const b = a as string;
 declare const a: { hello: 'world' };
 const b = a as { hello: string };
       `,
+      `
+const b = 'hello' as const;
+      `,
+      `
+function foo<T extends boolean>(a: T) {
+  return a as T | number;
+}
+      `,
     ],
     invalid: [
       {
@@ -71,6 +79,7 @@ const b = a as string | boolean;
           },
         ],
       },
+      // multiple failures
       {
         code: `
 declare const a: string;
@@ -95,6 +104,48 @@ const b = a as 'foo' as 'bar';
             endColumn: 21,
             endLine: 3,
             line: 3,
+            messageId: 'unsafeTypeAssertion',
+          },
+        ],
+      },
+      // type constraint
+      {
+        code: `
+function foo<T extends boolean>(a: T) {
+  return a as true;
+}
+        `,
+        errors: [
+          {
+            column: 10,
+            data: {
+              type: 'boolean',
+            },
+            endColumn: 19,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeTypeAssertion',
+          },
+        ],
+      },
+      // long/complex original type
+      {
+        code: `
+declare const a: Omit<
+  Required<Readonly<{ hello: 'world'; foo: 'bar' }>>,
+  'foo'
+>;
+const b = a as string;
+        `,
+        errors: [
+          {
+            column: 11,
+            data: {
+              type: 'Omit<Required<Readonly<{ hello: "world"; foo: "bar"; }>>, "foo">',
+            },
+            endColumn: 22,
+            endLine: 6,
+            line: 6,
             messageId: 'unsafeTypeAssertion',
           },
         ],
@@ -341,6 +392,10 @@ export const foo = { bar: 1, bazz: 1 } as {
   bar: number;
 };
       `,
+      `
+declare const a: { hello: string } & { world: string };
+const b = a as { hello: string };
+      `,
     ],
     invalid: [
       {
@@ -394,10 +449,6 @@ var foo = {} as {
 // const b = a as () => string | number;
 //     `,
 //     `
-// declare const foo = 'hello' as const;
-// foo() as string;
-//     `,
-//     `
 // declare const foo: () => string | undefined;
 // foo()!;
 //     `,
@@ -409,28 +460,6 @@ var foo = {} as {
 // function foo(a: string) {
 //   return a as string | number;
 // }
-//     `,
-//     `
-// function foo<T extends boolean>(a: T) {
-//   return a as boolean | number;
-// }
-//     `,
-//     `
-// function foo<T extends boolean>(a: T) {
-//   return a as T | number;
-// }
-//     `,
-//     `
-// declare const a: { hello: string } & { world: string };
-// const b = a as { hello: string };
-//     `,
-//     `
-// interface Foo {
-//   bar: number;
-// }
-
-// // no additional properties are allowed
-// export const foo = { bar: 1, bazz: 1 } as Foo;
 //     `,
 //   ],
 //   invalid: [
