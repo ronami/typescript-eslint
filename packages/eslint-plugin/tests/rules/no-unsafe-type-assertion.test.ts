@@ -19,26 +19,26 @@ describe('basic assertions', () => {
     valid: [
       `
 declare const a: string;
-const b = a as string | number;
+a as string | number;
       `,
       `
 declare const a: string;
-const b = <string | number>a;
+<string | number>a;
       `,
       `
 declare const a: string;
-const b = a as string | number as string | number | boolean;
+a as string | number as string | number | boolean;
       `,
       `
 declare const a: string;
-const b = a as string;
+a as string;
       `,
       `
 declare const a: { hello: 'world' };
-const b = a as { hello: string };
+a as { hello: string };
       `,
       `
-const b = 'hello' as const;
+'hello' as const;
       `,
       `
 function foo<T extends boolean>(a: T) {
@@ -50,15 +50,15 @@ function foo<T extends boolean>(a: T) {
       {
         code: `
 declare const a: string | number;
-const b = a as string;
+a as string;
         `,
         errors: [
           {
-            column: 11,
+            column: 1,
             data: {
               type: 'string | number',
             },
-            endColumn: 22,
+            endColumn: 12,
             endLine: 3,
             line: 3,
             messageId: 'unsafeTypeAssertion',
@@ -68,15 +68,15 @@ const b = a as string;
       {
         code: `
 declare const a: string | number;
-const b = <string>a;
+<string>a;
         `,
         errors: [
           {
-            column: 11,
+            column: 1,
             data: {
               type: 'string | number',
             },
-            endColumn: 20,
+            endColumn: 10,
             endLine: 3,
             line: 3,
             messageId: 'unsafeTypeAssertion',
@@ -86,15 +86,15 @@ const b = <string>a;
       {
         code: `
 declare const a: string | undefined;
-const b = a as string | boolean;
+a as string | boolean;
         `,
         errors: [
           {
-            column: 11,
+            column: 1,
             data: {
               type: 'string | undefined',
             },
-            endColumn: 32,
+            endColumn: 22,
             endLine: 3,
             line: 3,
             messageId: 'unsafeTypeAssertion',
@@ -105,25 +105,25 @@ const b = a as string | boolean;
       {
         code: `
 declare const a: string;
-const b = a as 'foo' as 'bar';
+a as 'foo' as 'bar';
         `,
         errors: [
           {
-            column: 11,
+            column: 1,
             data: {
               type: '"foo"',
             },
-            endColumn: 30,
+            endColumn: 20,
             endLine: 3,
             line: 3,
             messageId: 'unsafeTypeAssertion',
           },
           {
-            column: 11,
+            column: 1,
             data: {
               type: 'string',
             },
-            endColumn: 21,
+            endColumn: 11,
             endLine: 3,
             line: 3,
             messageId: 'unsafeTypeAssertion',
@@ -157,15 +157,15 @@ declare const a: Omit<
   Required<Readonly<{ hello: 'world'; foo: 'bar' }>>,
   'foo'
 >;
-const b = a as string;
+a as string;
         `,
         errors: [
           {
-            column: 11,
+            column: 1,
             data: {
               type: 'Omit<Required<Readonly<{ hello: "world"; foo: "bar"; }>>, "foo">',
             },
-            endColumn: 22,
+            endColumn: 12,
             endLine: 6,
             line: 6,
             messageId: 'unsafeTypeAssertion',
@@ -199,23 +199,23 @@ describe('any assertions', () => {
     valid: [
       `
 declare const _any_: any;
-const b = _any_ as any;
+_any_ as any;
       `,
       `
 declare const _any_: any;
-const b = _any_ as unknown;
+_any_ as unknown;
       `,
     ],
     invalid: [
       {
         code: `
 declare const _any_: any;
-const b = _any_ as string;
+_any_ as string;
         `,
         errors: [
           {
-            column: 11,
-            endColumn: 26,
+            column: 1,
+            endColumn: 16,
             endLine: 3,
             line: 3,
             messageId: 'unsafeAnyTypeAssertion',
@@ -225,12 +225,12 @@ const b = _any_ as string;
       {
         code: `
 declare const _any_: any;
-const b = _any_ as Function;
+_any_ as Function;
         `,
         errors: [
           {
-            column: 11,
-            endColumn: 28,
+            column: 1,
+            endColumn: 18,
             endLine: 3,
             line: 3,
             messageId: 'unsafeFunctionTypeAssertion',
@@ -240,12 +240,12 @@ const b = _any_ as Function;
       {
         code: `
 declare const _any_: any;
-const b = _any_ as never;
+_any_ as never;
         `,
         errors: [
           {
-            column: 11,
-            endColumn: 25,
+            column: 1,
+            endColumn: 15,
             endLine: 3,
             line: 3,
             messageId: 'unsafeAnyTypeAssertion',
@@ -254,12 +254,12 @@ const b = _any_ as never;
       },
       {
         code: `
-const b = 'foo' as any;
+'foo' as any;
         `,
         errors: [
           {
-            column: 11,
-            endColumn: 23,
+            column: 1,
+            endColumn: 13,
             endLine: 2,
             line: 2,
             messageId: 'unsafeAnyTypeAssertion',
@@ -275,23 +275,23 @@ describe('never assertions', () => {
     valid: [
       `
 declare const _never_: never;
-const b = _never_ as never;
+_never_ as never;
       `,
       `
 declare const _never_: never;
-const b = _never_ as unknown;
+_never_ as unknown;
       `,
     ],
     invalid: [
       {
         code: `
 declare const _never_: never;
-const b = _never_ as string;
+_never_ as string;
         `,
         errors: [
           {
-            column: 11,
-            endColumn: 28,
+            column: 1,
+            endColumn: 18,
             endLine: 3,
             line: 3,
             messageId: 'unsafeNeverTypeAssertion',
@@ -301,12 +301,12 @@ const b = _never_ as string;
       {
         code: `
 declare const _never_: never;
-const b = _never_ as Function;
+_never_ as Function;
         `,
         errors: [
           {
-            column: 11,
-            endColumn: 30,
+            column: 1,
+            endColumn: 20,
             endLine: 3,
             line: 3,
             messageId: 'unsafeFunctionTypeAssertion',
@@ -316,12 +316,12 @@ const b = _never_ as Function;
       {
         code: `
 declare const _never_: never;
-const b = _never_ as any;
+_never_ as any;
         `,
         errors: [
           {
-            column: 11,
-            endColumn: 25,
+            column: 1,
+            endColumn: 15,
             endLine: 3,
             line: 3,
             messageId: 'unsafeNeverTypeAssertion',
@@ -331,12 +331,12 @@ const b = _never_ as any;
       {
         code: `
 declare const _string_: string;
-const b = _string_ as never;
+_string_ as never;
         `,
         errors: [
           {
-            column: 11,
-            endColumn: 28,
+            column: 1,
+            endColumn: 18,
             endLine: 3,
             line: 3,
             messageId: 'unsafeTypeAssertion',
@@ -352,23 +352,23 @@ describe('function assertions', () => {
     valid: [
       `
 declare const _function_: Function;
-const b = _function_ as Function;
+_function_ as Function;
       `,
       `
 declare const _function_: Function;
-const b = _function_ as unknown;
+_function_ as unknown;
       `,
     ],
     invalid: [
       {
         code: `
 declare const _function_: Function;
-const b = _function_ as () => void;
+_function_ as () => void;
         `,
         errors: [
           {
-            column: 11,
-            endColumn: 35,
+            column: 1,
+            endColumn: 25,
             endLine: 3,
             line: 3,
             messageId: 'unsafeTypeAssertion',
@@ -378,12 +378,12 @@ const b = _function_ as () => void;
       {
         code: `
 declare const _function_: Function;
-const b = _function_ as any;
+_function_ as any;
         `,
         errors: [
           {
-            column: 11,
-            endColumn: 28,
+            column: 1,
+            endColumn: 18,
             endLine: 3,
             line: 3,
             messageId: 'unsafeAnyTypeAssertion',
@@ -393,12 +393,12 @@ const b = _function_ as any;
       {
         code: `
 declare const _function_: Function;
-const b = _function_ as never;
+_function_ as never;
         `,
         errors: [
           {
-            column: 11,
-            endColumn: 30,
+            column: 1,
+            endColumn: 20,
             endLine: 3,
             line: 3,
             messageId: 'unsafeTypeAssertion',
@@ -407,12 +407,12 @@ const b = _function_ as never;
       },
       {
         code: `
-const b = (() => {}) as Function;
+(() => {}) as Function;
         `,
         errors: [
           {
-            column: 11,
-            endColumn: 33,
+            column: 1,
+            endColumn: 23,
             endLine: 2,
             line: 2,
             messageId: 'unsafeFunctionTypeAssertion',
@@ -434,7 +434,7 @@ export const foo = { bar: 1, bazz: 1 } as {
       `,
       `
 declare const a: { hello: string } & { world: string };
-const b = a as { hello: string };
+a as { hello: string };
       `,
     ],
     invalid: [
