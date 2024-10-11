@@ -591,6 +591,172 @@ a as number[];
   });
 });
 
+describe('tuple assertions', () => {
+  ruleTester.run('no-unsafe-type-assertion', rule, {
+    valid: [
+      `
+declare const a: [string];
+a as [string | number];
+      `,
+      `
+declare const a: [string, number];
+a as [string, string | number];
+      `,
+      `
+declare const a: [string];
+a as [unknown];
+      `,
+      `
+declare const a: [{ hello: 'world'; foo: 'bar' }];
+a as [{ hello: 'world' }];
+      `,
+    ],
+    invalid: [
+      {
+        code: `
+declare const a: [string | number];
+a as [string];
+        `,
+        errors: [
+          {
+            column: 1,
+            data: {
+              type: '[string | number]',
+            },
+            endColumn: 14,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+declare const a: [string, number];
+a as [string, string];
+        `,
+        errors: [
+          {
+            column: 1,
+            data: {
+              type: '[string, number]',
+            },
+            endColumn: 22,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+declare const a: [any];
+a as [number];
+        `,
+        errors: [
+          {
+            column: 1,
+            endColumn: 14,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeAnyTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+declare const a: [number, any];
+a as [number, number];
+        `,
+        errors: [
+          {
+            column: 1,
+            endColumn: 22,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeAnyTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+declare const a: [number];
+a as [any];
+        `,
+        errors: [
+          {
+            column: 1,
+            endColumn: 11,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeAnyTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+declare const a: [unknown];
+a as [number];
+        `,
+        errors: [
+          {
+            column: 1,
+            endColumn: 14,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+declare const a: [number];
+a as [never];
+        `,
+        errors: [
+          {
+            column: 1,
+            endColumn: 13,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+declare const a: [never];
+a as [number];
+        `,
+        errors: [
+          {
+            column: 1,
+            endColumn: 14,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeNeverTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+declare const a: [Promise<string | number>];
+a as [Promise<string>];
+        `,
+        errors: [
+          {
+            column: 1,
+            endColumn: 23,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeTypeAssertion',
+          },
+        ],
+      },
+    ],
+  });
+});
+
 describe('promise assertions', () => {
   ruleTester.run('no-unsafe-type-assertion', rule, {
     valid: [

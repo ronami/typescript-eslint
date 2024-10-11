@@ -94,6 +94,21 @@ export default createRule({
         );
       }
 
+      if (checker.isTupleType(type) && checker.isTupleType(assertedType)) {
+        const typeArguments = checker.getTypeArguments(type);
+        const assertedTypeArguments = checker.getTypeArguments(assertedType);
+
+        for (const [index, type] of typeArguments.entries()) {
+          const assertedType = assertedTypeArguments[index];
+
+          const incompatible = compareTypes(node, type, assertedType);
+
+          if (incompatible) {
+            return true;
+          }
+        }
+      }
+
       const tsNode = services.esTreeNodeToTSNodeMap.get(node.expression);
       const tsAssertedNode = services.esTreeNodeToTSNodeMap.get(
         node.typeAnnotation,
