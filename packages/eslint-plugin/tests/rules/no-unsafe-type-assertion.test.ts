@@ -47,6 +47,7 @@ const b = a as string;
               type: 'string | number',
             },
             endColumn: 22,
+            endLine: 3,
             line: 3,
             messageId: 'unsafeTypeAssertion',
           },
@@ -64,6 +65,7 @@ const b = a as string | boolean;
               type: 'string | undefined',
             },
             endColumn: 32,
+            endLine: 3,
             line: 3,
             messageId: 'unsafeTypeAssertion',
           },
@@ -81,6 +83,7 @@ const b = a as 'foo' as 'bar';
               type: '"foo"',
             },
             endColumn: 30,
+            endLine: 3,
             line: 3,
             messageId: 'unsafeTypeAssertion',
           },
@@ -90,6 +93,7 @@ const b = a as 'foo' as 'bar';
               type: 'string',
             },
             endColumn: 21,
+            endLine: 3,
             line: 3,
             messageId: 'unsafeTypeAssertion',
           },
@@ -121,6 +125,7 @@ const b = _any_ as string;
           {
             column: 11,
             endColumn: 26,
+            endLine: 3,
             line: 3,
             messageId: 'unsafeAnyTypeAssertion',
           },
@@ -135,6 +140,7 @@ const b = _any_ as Function;
           {
             column: 11,
             endColumn: 28,
+            endLine: 3,
             line: 3,
             messageId: 'unsafeFunctionTypeAssertion',
           },
@@ -149,6 +155,7 @@ const b = _any_ as never;
           {
             column: 11,
             endColumn: 25,
+            endLine: 3,
             line: 3,
             messageId: 'unsafeAnyTypeAssertion',
           },
@@ -162,6 +169,7 @@ const b = 'foo' as any;
           {
             column: 11,
             endColumn: 23,
+            endLine: 2,
             line: 2,
             messageId: 'unsafeAnyTypeAssertion',
           },
@@ -193,6 +201,7 @@ const b = _never_ as string;
           {
             column: 11,
             endColumn: 28,
+            endLine: 3,
             line: 3,
             messageId: 'unsafeNeverTypeAssertion',
           },
@@ -207,6 +216,7 @@ const b = _never_ as Function;
           {
             column: 11,
             endColumn: 30,
+            endLine: 3,
             line: 3,
             messageId: 'unsafeFunctionTypeAssertion',
           },
@@ -221,6 +231,7 @@ const b = _never_ as any;
           {
             column: 11,
             endColumn: 25,
+            endLine: 3,
             line: 3,
             messageId: 'unsafeNeverTypeAssertion',
           },
@@ -235,6 +246,7 @@ const b = _string_ as never;
           {
             column: 11,
             endColumn: 28,
+            endLine: 3,
             line: 3,
             messageId: 'unsafeTypeAssertion',
           },
@@ -247,6 +259,10 @@ const b = _string_ as never;
 describe('function assertions', () => {
   ruleTester.run('no-unsafe-type-assertion', rule, {
     valid: [
+      `
+declare const _function_: Function;
+const b = _function_ as Function;
+      `,
       `
 declare const _function_: Function;
 const b = _function_ as unknown;
@@ -262,8 +278,24 @@ const b = _function_ as () => void;
           {
             column: 11,
             endColumn: 35,
+            endLine: 3,
             line: 3,
             messageId: 'unsafeTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+declare const _function_: Function;
+const b = _function_ as any;
+        `,
+        errors: [
+          {
+            column: 11,
+            endColumn: 28,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeAnyTypeAssertion',
           },
         ],
       },
@@ -276,6 +308,7 @@ const b = _function_ as never;
           {
             column: 11,
             endColumn: 30,
+            endLine: 3,
             line: 3,
             messageId: 'unsafeTypeAssertion',
           },
@@ -289,6 +322,7 @@ const b = (() => {}) as Function;
           {
             column: 11,
             endColumn: 33,
+            endLine: 2,
             line: 2,
             messageId: 'unsafeFunctionTypeAssertion',
           },
@@ -298,20 +332,43 @@ const b = (() => {}) as Function;
   });
 });
 
+describe('object assertions', () => {
+  ruleTester.run('no-unsafe-type-assertion', rule, {
+    valid: [
+      `
+// additional properties should be allowed
+export const foo = { bar: 1, bazz: 1 } as {
+  bar: number;
+};
+      `,
+    ],
+    invalid: [
+      {
+        code: `
+var foo = {} as {
+  bar: number;
+  bas: string;
+};
+        `,
+        errors: [
+          {
+            column: 11,
+            data: {
+              type: '{}',
+            },
+            endColumn: 2,
+            endLine: 5,
+            line: 2,
+            messageId: 'unsafeTypeAssertion',
+          },
+        ],
+      },
+    ],
+  });
+});
+
 // ruleTester.run('no-unsafe-type-assertion', rule, {
 //   valid: [
-//     `
-// declare const a: string;
-// const b = a as unknown;
-//     `,
-//     `
-// declare const a: string;
-// const b = a as any;
-//     `,
-//     `
-// declare const a: string;
-// const b = a as any as number;
-//     `,
 //     `
 // declare const a: () => boolean;
 // const b = a() as boolean | number;
