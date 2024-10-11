@@ -34,8 +34,10 @@ export default createRule({
         node.typeAnnotation,
       );
 
+      const nodeWidenedType = checker.getWidenedType(nodeType);
+
       const isAssertionSafe = checker.isTypeAssignableTo(
-        nodeType,
+        nodeWidenedType,
         assertedType,
       );
 
