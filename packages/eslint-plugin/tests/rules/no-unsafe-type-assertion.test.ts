@@ -100,6 +100,14 @@ declare const a: { hello: string } & { world: string };
 const b = a as { hello: string };
     `,
     `
+interface Foo {
+  bar: number;
+}
+
+// no additional properties are allowed
+export const foo = { bar: 1, bazz: 1 } as Foo;
+    `,
+    `
 declare const a: string;
 const b = <string | number>a;
     `,
@@ -177,6 +185,14 @@ function foo<T extends boolean>(a: T) {
     `
 declare const a: { hello: string } & { world: string };
 const b = <{ hello: string }>a;
+    `,
+    `
+interface Foo {
+  bar: number;
+}
+
+// no additional properties are allowed
+export const foo = <Foo>{ bar: 1, bazz: 1 };
     `,
   ],
   invalid: [
@@ -361,27 +377,6 @@ var foo = {} as Foo;
             type: '{}',
           },
           endColumn: 20,
-          line: 7,
-          messageId: 'unsafeTypeAssertion',
-        },
-      ],
-    },
-    {
-      code: `
-interface Foo {
-  bar: number;
-}
-
-// no additional properties are allowed
-export const foo = { bar: 1, bazz: 1 } as Foo;
-      `,
-      errors: [
-        {
-          column: 20,
-          data: {
-            type: '{ bar: number; bazz: number; }',
-          },
-          endColumn: 46,
           line: 7,
           messageId: 'unsafeTypeAssertion',
         },
@@ -708,27 +703,6 @@ var foo = <Foo>{};
             type: '{}',
           },
           endColumn: 18,
-          line: 7,
-          messageId: 'unsafeTypeAssertion',
-        },
-      ],
-    },
-    {
-      code: `
-interface Foo {
-  bar: number;
-}
-
-// no additional properties are allowed
-export const foo = <Foo>{ bar: 1, bazz: 1 };
-      `,
-      errors: [
-        {
-          column: 20,
-          data: {
-            type: '{ bar: number; bazz: number; }',
-          },
-          endColumn: 44,
           line: 7,
           messageId: 'unsafeTypeAssertion',
         },
