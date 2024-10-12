@@ -68,6 +68,24 @@ a as string;
       {
         code: `
 declare const a: string | number;
+a satisfies string as string;
+        `,
+        errors: [
+          {
+            column: 1,
+            data: {
+              type: 'string | number',
+            },
+            endColumn: 29,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+declare const a: string | number;
 <string>a;
         `,
         errors: [
@@ -215,10 +233,31 @@ _any_ as string;
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 16,
             endLine: 3,
             line: 3,
-            messageId: 'unsafeAnyTypeAssertion',
+            messageId: 'unsafeOfAnyTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+declare const _unknown_: unknown;
+_unknown_ as any;
+        `,
+        errors: [
+          {
+            column: 1,
+            data: {
+              type: '`any`',
+            },
+            endColumn: 17,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeToAnyTypeAssertion',
           },
         ],
       },
@@ -230,10 +269,13 @@ _any_ as Function;
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 18,
             endLine: 3,
             line: 3,
-            messageId: 'unsafeFunctionTypeAssertion',
+            messageId: 'unsafeOfAnyTypeAssertion',
           },
         ],
       },
@@ -245,10 +287,13 @@ _any_ as never;
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 15,
             endLine: 3,
             line: 3,
-            messageId: 'unsafeAnyTypeAssertion',
+            messageId: 'unsafeOfAnyTypeAssertion',
           },
         ],
       },
@@ -259,10 +304,13 @@ _any_ as never;
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 13,
             endLine: 2,
             line: 2,
-            messageId: 'unsafeAnyTypeAssertion',
+            messageId: 'unsafeToAnyTypeAssertion',
           },
         ],
       },
@@ -274,10 +322,30 @@ const bar = foo as number;
         errors: [
           {
             column: 13,
+            data: {
+              type: 'error typed',
+            },
             endColumn: 26,
             endLine: 2,
             line: 2,
-            messageId: 'unsafeAnyTypeAssertion',
+            messageId: 'unsafeOfAnyTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+const bar = 'foo' as errorType;
+        `,
+        errors: [
+          {
+            column: 13,
+            data: {
+              type: 'error typed',
+            },
+            endColumn: 31,
+            endLine: 2,
+            line: 2,
+            messageId: 'unsafeToAnyTypeAssertion',
           },
         ],
       },
@@ -301,45 +369,18 @@ _never_ as unknown;
       {
         code: `
 declare const _never_: never;
-_never_ as string;
-        `,
-        errors: [
-          {
-            column: 1,
-            endColumn: 18,
-            endLine: 3,
-            line: 3,
-            messageId: 'unsafeNeverTypeAssertion',
-          },
-        ],
-      },
-      {
-        code: `
-declare const _never_: never;
-_never_ as Function;
-        `,
-        errors: [
-          {
-            column: 1,
-            endColumn: 20,
-            endLine: 3,
-            line: 3,
-            messageId: 'unsafeFunctionTypeAssertion',
-          },
-        ],
-      },
-      {
-        code: `
-declare const _never_: never;
 _never_ as any;
         `,
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 15,
             endLine: 3,
             line: 3,
-            messageId: 'unsafeNeverTypeAssertion',
+            messageId: 'unsafeToAnyTypeAssertion',
           },
         ],
       },
@@ -398,10 +439,13 @@ _function_ as any;
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 18,
             endLine: 3,
             line: 3,
-            messageId: 'unsafeAnyTypeAssertion',
+            messageId: 'unsafeToAnyTypeAssertion',
           },
         ],
       },
@@ -417,20 +461,6 @@ _function_ as never;
             endLine: 3,
             line: 3,
             messageId: 'unsafeTypeAssertion',
-          },
-        ],
-      },
-      {
-        code: `
-(() => {}) as Function;
-        `,
-        errors: [
-          {
-            column: 1,
-            endColumn: 23,
-            endLine: 2,
-            line: 2,
-            messageId: 'unsafeFunctionTypeAssertion',
           },
         ],
       },
@@ -451,6 +481,18 @@ export const foo = { bar: 1, bazz: 1 } as {
 declare const a: { hello: string } & { world: string };
 a as { hello: string };
       `,
+      `
+declare const a: { hello: any };
+a as { hello: unknown };
+      `,
+      `
+declare const a: { hello: string };
+a as { hello?: string };
+      `,
+      `
+declare const a: { hello: string };
+a satisfies Record<string, string> as { hello?: string };
+      `,
     ],
     invalid: [
       {
@@ -469,6 +511,39 @@ var foo = {} as {
             endColumn: 2,
             endLine: 5,
             line: 2,
+            messageId: 'unsafeTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+declare const a: { hello: string };
+a satisfies Record<string, string> as { hello: string; world: string };
+        `,
+        errors: [
+          {
+            column: 1,
+            data: {
+              type: '{ hello: string; }',
+            },
+            endColumn: 71,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+declare const a: { hello?: string };
+a as { hello: string };
+        `,
+        errors: [
+          {
+            column: 1,
+            endColumn: 23,
+            endLine: 3,
+            line: 3,
             messageId: 'unsafeTypeAssertion',
           },
         ],
@@ -520,10 +595,13 @@ a as number[];
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 14,
             endLine: 3,
             line: 3,
-            messageId: 'unsafeAnyTypeAssertion',
+            messageId: 'unsafeOfAnyTypeAssertion',
           },
         ],
       },
@@ -535,10 +613,13 @@ a as any[];
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 11,
             endLine: 3,
             line: 3,
-            messageId: 'unsafeAnyTypeAssertion',
+            messageId: 'unsafeToAnyTypeAssertion',
           },
         ],
       },
@@ -569,21 +650,6 @@ a as never[];
             endLine: 3,
             line: 3,
             messageId: 'unsafeTypeAssertion',
-          },
-        ],
-      },
-      {
-        code: `
-declare const a: never[];
-a as number[];
-        `,
-        errors: [
-          {
-            column: 1,
-            endColumn: 14,
-            endLine: 3,
-            line: 3,
-            messageId: 'unsafeNeverTypeAssertion',
           },
         ],
       },
@@ -650,16 +716,55 @@ a as [string, string];
       },
       {
         code: `
+declare const a: [string];
+a as [string, number];
+        `,
+        errors: [
+          {
+            column: 1,
+            data: {
+              type: '[string]',
+            },
+            endColumn: 22,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+declare const a: [string, number];
+a as [string];
+        `,
+        errors: [
+          {
+            column: 1,
+            data: {
+              type: '[string, number]',
+            },
+            endColumn: 14,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
 declare const a: [any];
 a as [number];
         `,
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 14,
             endLine: 3,
             line: 3,
-            messageId: 'unsafeAnyTypeAssertion',
+            messageId: 'unsafeOfAnyTypeAssertion',
           },
         ],
       },
@@ -671,10 +776,13 @@ a as [number, number];
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 22,
             endLine: 3,
             line: 3,
-            messageId: 'unsafeAnyTypeAssertion',
+            messageId: 'unsafeOfAnyTypeAssertion',
           },
         ],
       },
@@ -686,10 +794,13 @@ a as [any];
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 11,
             endLine: 3,
             line: 3,
-            messageId: 'unsafeAnyTypeAssertion',
+            messageId: 'unsafeToAnyTypeAssertion',
           },
         ],
       },
@@ -720,21 +831,6 @@ a as [never];
             endLine: 3,
             line: 3,
             messageId: 'unsafeTypeAssertion',
-          },
-        ],
-      },
-      {
-        code: `
-declare const a: [never];
-a as [number];
-        `,
-        errors: [
-          {
-            column: 1,
-            endColumn: 14,
-            endLine: 3,
-            line: 3,
-            messageId: 'unsafeNeverTypeAssertion',
           },
         ],
       },
@@ -772,6 +868,10 @@ a as Promise<unknown>;
 declare const a: Promise<{ hello: 'world'; foo: 'bar' }>;
 a as Promise<{ hello: 'world' }>;
       `,
+      `
+declare const a: Promise<string>;
+a as Promise<string> | string;
+      `,
     ],
     invalid: [
       {
@@ -800,10 +900,13 @@ a as Promise<number>;
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 21,
             endLine: 3,
             line: 3,
-            messageId: 'unsafeAnyTypeAssertion',
+            messageId: 'unsafeOfAnyTypeAssertion',
           },
         ],
       },
@@ -815,10 +918,31 @@ a as Promise<any>;
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 18,
             endLine: 3,
             line: 3,
-            messageId: 'unsafeAnyTypeAssertion',
+            messageId: 'unsafeToAnyTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+declare const a: Promise<number[]>;
+a as Promise<any[]>;
+        `,
+        errors: [
+          {
+            column: 1,
+            data: {
+              type: '`any`',
+            },
+            endColumn: 20,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeToAnyTypeAssertion',
           },
         ],
       },
@@ -852,18 +976,68 @@ a as Promise<never>;
           },
         ],
       },
+    ],
+  });
+});
+
+describe('class assertions', () => {
+  ruleTester.run('no-unsafe-type-assertion', rule, {
+    valid: [
+      `
+class Foo {}
+declare const a: Foo;
+a as Foo | number;
+      `,
+      `
+class Foo {}
+class Bar {}
+declare const a: Foo;
+a as Bar;
+      `,
+      `
+class Foo {
+  hello() {}
+}
+class Bar {}
+declare const a: Foo;
+a as Bar;
+      `,
+      `
+class Foo {
+  hello() {}
+}
+class Bar extends Foo {}
+declare const a: Bar;
+a as Foo;
+      `,
+      `
+class Foo {
+  hello() {}
+}
+class Bar extends Foo {}
+declare const a: Foo;
+a as Bar;
+      `,
+    ],
+    invalid: [
       {
         code: `
-declare const a: Promise<never>;
-a as Promise<number>;
+class Foo {
+  hello() {}
+}
+class Bar extends Foo {
+  world() {}
+}
+declare const a: Foo;
+a as Bar;
         `,
         errors: [
           {
             column: 1,
-            endColumn: 21,
-            endLine: 3,
-            line: 3,
-            messageId: 'unsafeNeverTypeAssertion',
+            endColumn: 9,
+            endLine: 9,
+            line: 9,
+            messageId: 'unsafeTypeAssertion',
           },
         ],
       },
