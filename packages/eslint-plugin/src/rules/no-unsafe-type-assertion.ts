@@ -98,6 +98,10 @@ export default createRule({
         const typeArguments = checker.getTypeArguments(type);
         const assertedTypeArguments = checker.getTypeArguments(assertedType);
 
+        if (typeArguments.length !== assertedTypeArguments.length) {
+          return false;
+        }
+
         for (const [index, type] of typeArguments.entries()) {
           const assertedType = assertedTypeArguments[index];
 

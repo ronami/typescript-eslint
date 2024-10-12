@@ -650,6 +650,42 @@ a as [string, string];
       },
       {
         code: `
+declare const a: [string];
+a as [string, number];
+        `,
+        errors: [
+          {
+            column: 1,
+            data: {
+              type: '[string]',
+            },
+            endColumn: 22,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+declare const a: [string, number];
+a as [string];
+        `,
+        errors: [
+          {
+            column: 1,
+            data: {
+              type: '[string, number]',
+            },
+            endColumn: 14,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
 declare const a: [any];
 a as [number];
         `,
