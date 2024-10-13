@@ -918,10 +918,6 @@ a as string;
 declare const a: string;
 a as string | number;
       `,
-      `
-declare const a: string;
-a as string | never;
-      `,
     ],
     invalid: [
       {
