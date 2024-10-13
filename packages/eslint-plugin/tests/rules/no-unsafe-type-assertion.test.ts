@@ -906,3 +906,54 @@ a as Promise<number>;
     ],
   });
 });
+
+describe('union assertions', () => {
+  ruleTester.run('no-unsafe-type-assertion', rule, {
+    valid: [
+      `
+declare const a: 'hello' | 'world';
+a as string;
+      `,
+      `
+declare const a: string;
+a as string | number;
+      `,
+      `
+declare const a: string;
+a as string | never;
+      `,
+    ],
+    invalid: [
+      {
+        code: `
+declare const a: 'hello' | any[];
+export const foo = a as string[];
+        `,
+        errors: [
+          {
+            column: 20,
+            endColumn: 33,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeAnyTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+declare const a: 'hello'[];
+export const foo = a as string | any[];
+        `,
+        errors: [
+          {
+            column: 20,
+            endColumn: 39,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeAnyTypeAssertion',
+          },
+        ],
+      },
+    ],
+  });
+});
