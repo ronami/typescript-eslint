@@ -86,6 +86,18 @@ export default createRule({
         return false;
       }
 
+      if (tsutils.isUnionType(type)) {
+        return tsutils.unionTypeParts(type).some(typePart => {
+          return compareTypes(node, typePart, assertedType);
+        });
+      }
+
+      if (tsutils.isUnionType(assertedType)) {
+        return tsutils.unionTypeParts(assertedType).some(assertedTypePart => {
+          return compareTypes(node, type, assertedTypePart);
+        });
+      }
+
       if (checker.isArrayType(type) && checker.isArrayType(assertedType)) {
         return compareTypes(
           node,
