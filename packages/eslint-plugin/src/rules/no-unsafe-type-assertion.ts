@@ -241,7 +241,11 @@ export default createRule({
       const incompatible = compareTypes(node, nodeType, assertedType);
 
       if (!incompatible) {
-        const nodeWidenedType = checker.getWidenedType(nodeType);
+        const nodeWidenedType =
+          tsutils.isObjectType(nodeType) &&
+          tsutils.isObjectFlagSet(nodeType, ts.ObjectFlags.ObjectLiteral)
+            ? checker.getWidenedType(nodeType)
+            : nodeType;
 
         const isAssertionSafe = checker.isTypeAssignableTo(
           nodeWidenedType,
