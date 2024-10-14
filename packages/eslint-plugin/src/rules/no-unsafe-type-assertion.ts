@@ -8,6 +8,7 @@ import {
   createRule,
   getConstrainedTypeAtLocation,
   getParserServices,
+  isPromiseLike,
   isReferenceToGlobalFunction,
   isTypeAnyType,
   isTypeFlagSet,
@@ -104,6 +105,20 @@ export default createRule({
           checker.getTypeArguments(type)[0],
           checker.getTypeArguments(assertedType)[0],
         );
+      }
+
+      if (
+        isPromiseLike(services.program, type) &&
+        isPromiseLike(services.program, assertedType)
+      ) {
+        const awaitedType = checker.getAwaitedType(type);
+        const awaitedAssertedType = checker.getAwaitedType(assertedType);
+
+        if (!awaitedType || !awaitedAssertedType) {
+          return false;
+        }
+
+        return compareTypes(node, awaitedType, awaitedAssertedType);
       }
 
       if (tsutils.isObjectType(type) && tsutils.isObjectType(assertedType)) {

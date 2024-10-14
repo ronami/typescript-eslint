@@ -861,7 +861,7 @@ a as [Promise<string>];
   });
 });
 
-describe.skip('promise assertions', () => {
+describe('promise assertions', () => {
   ruleTester.run('no-unsafe-type-assertion', rule, {
     valid: [
       `
