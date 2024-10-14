@@ -106,6 +106,32 @@ export default createRule({
         );
       }
 
+      if (tsutils.isObjectType(type) && tsutils.isObjectType(assertedType)) {
+        // const typeProperties = type.getProperties();
+        const assertedTypeProperties = assertedType.getProperties();
+
+        for (const assertedSymbol of assertedTypeProperties) {
+          const symbol = type.getProperty(assertedSymbol.name);
+
+          if (!symbol) {
+            return false;
+          }
+
+          const typeProperty = checker.getTypeOfSymbol(symbol);
+          const assertedTypeProperty = checker.getTypeOfSymbol(assertedSymbol);
+
+          const incompatible = compareTypes(
+            node,
+            typeProperty,
+            assertedTypeProperty,
+          );
+
+          if (incompatible) {
+            return true;
+          }
+        }
+      }
+
       if (checker.isTupleType(type) && checker.isTupleType(assertedType)) {
         const typeArguments = checker.getTypeArguments(type);
         const assertedTypeArguments = checker.getTypeArguments(assertedType);

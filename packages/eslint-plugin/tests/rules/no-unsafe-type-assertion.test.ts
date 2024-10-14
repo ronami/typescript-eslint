@@ -480,14 +480,32 @@ a as { hello: any };
         `,
         errors: [
           {
-            column: 11,
+            column: 1,
             data: {
               type: '{}',
             },
-            endColumn: 2,
-            endLine: 5,
-            line: 2,
-            messageId: 'unsafeTypeAssertion',
+            endColumn: 20,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeAnyTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+declare const a: { hello: 'string'; foo: { bar: number } };
+a as { hello: string; foo: { bar: any } };
+        `,
+        errors: [
+          {
+            column: 1,
+            data: {
+              type: '{}',
+            },
+            endColumn: 42,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeAnyTypeAssertion',
           },
         ],
       },
