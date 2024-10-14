@@ -932,6 +932,21 @@ a as Promise<any>;
       },
       {
         code: `
+declare const a: Promise<number[]>;
+a as Promise<any[]>;
+        `,
+        errors: [
+          {
+            column: 1,
+            endColumn: 20,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeAnyTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
 declare const a: Promise<unknown>;
 a as Promise<number>;
         `,
