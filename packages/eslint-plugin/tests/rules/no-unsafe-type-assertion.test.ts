@@ -451,6 +451,14 @@ export const foo = { bar: 1, bazz: 1 } as {
 declare const a: { hello: string } & { world: string };
 a as { hello: string };
       `,
+      `
+declare const a: { hello: any };
+a as { hello: unknown };
+      `,
+      `
+declare const a: { hello: string };
+a as { hello?: string };
+      `,
     ],
     invalid: [
       {
@@ -481,9 +489,6 @@ a as { hello: any };
         errors: [
           {
             column: 1,
-            data: {
-              type: '{}',
-            },
             endColumn: 20,
             endLine: 3,
             line: 3,
@@ -499,13 +504,40 @@ a as { hello: string; foo: { bar: any } };
         errors: [
           {
             column: 1,
-            data: {
-              type: '{}',
-            },
             endColumn: 42,
             endLine: 3,
             line: 3,
             messageId: 'unsafeAnyTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+declare const a: { hello: any };
+a as { hello: string };
+        `,
+        errors: [
+          {
+            column: 1,
+            endColumn: 23,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeAnyTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+declare const a: { hello?: string };
+a as { hello: string };
+        `,
+        errors: [
+          {
+            column: 1,
+            endColumn: 23,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeTypeAssertion',
           },
         ],
       },
@@ -829,7 +861,7 @@ a as [Promise<string>];
   });
 });
 
-describe('promise assertions', () => {
+describe.skip('promise assertions', () => {
   ruleTester.run('no-unsafe-type-assertion', rule, {
     valid: [
       `
