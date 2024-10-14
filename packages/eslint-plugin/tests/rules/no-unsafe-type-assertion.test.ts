@@ -473,6 +473,24 @@ var foo = {} as {
           },
         ],
       },
+      {
+        code: `
+declare const a: { hello: string };
+a as { hello: any };
+        `,
+        errors: [
+          {
+            column: 11,
+            data: {
+              type: '{}',
+            },
+            endColumn: 2,
+            endLine: 5,
+            line: 2,
+            messageId: 'unsafeTypeAssertion',
+          },
+        ],
+      },
     ],
   });
 });
@@ -808,6 +826,10 @@ a as Promise<unknown>;
 declare const a: Promise<{ hello: 'world'; foo: 'bar' }>;
 a as Promise<{ hello: 'world' }>;
       `,
+      `
+declare const a: Promise<string>;
+a as Promise<string> | string;
+      `,
     ],
     invalid: [
       {
@@ -947,6 +969,71 @@ export const foo = a as string | any[];
             endLine: 3,
             line: 3,
             messageId: 'unsafeAnyTypeAssertion',
+          },
+        ],
+      },
+    ],
+  });
+});
+
+describe('class assertions', () => {
+  ruleTester.run('no-unsafe-type-assertion', rule, {
+    valid: [
+      `
+class Foo {}
+declare const a: Foo;
+a as Foo | number;
+      `,
+      `
+class Foo {}
+class Bar {}
+declare const a: Foo;
+a as Bar;
+      `,
+      `
+class Foo {
+  hello() {}
+}
+class Bar {}
+declare const a: Foo;
+a as Bar;
+      `,
+      `
+class Foo {
+  hello() {}
+}
+class Bar extends Foo {}
+declare const a: Bar;
+a as Foo;
+      `,
+      `
+class Foo {
+  hello() {}
+}
+class Bar extends Foo {}
+declare const a: Foo;
+a as Bar;
+      `,
+    ],
+    invalid: [
+      {
+        code: `
+class Foo {
+  hello() {}
+}
+class Bar extends Foo {
+  world() {}
+}
+declare const a: Foo;
+a as Bar;
+        `,
+        errors: [
+          {
+            column: 1,
+            endColumn: 9,
+            endLine: 9,
+            line: 9,
+            messageId: 'unsafeTypeAssertion',
           },
         ],
       },
