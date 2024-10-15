@@ -68,6 +68,24 @@ a as string;
       {
         code: `
 declare const a: string | number;
+a satisfies string as string;
+        `,
+        errors: [
+          {
+            column: 1,
+            data: {
+              type: 'string | number',
+            },
+            endColumn: 29,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+declare const a: string | number;
 <string>a;
         `,
         errors: [
@@ -471,6 +489,10 @@ a as { hello: unknown };
 declare const a: { hello: string };
 a as { hello?: string };
       `,
+      `
+declare const a: { hello: string };
+a satisfies Record<string, string> as { hello?: string };
+      `,
     ],
     invalid: [
       {
@@ -489,6 +511,24 @@ var foo = {} as {
             endColumn: 2,
             endLine: 5,
             line: 2,
+            messageId: 'unsafeTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+declare const a: { hello: string };
+a satisfies Record<string, string> as { hello: string; world: string };
+        `,
+        errors: [
+          {
+            column: 1,
+            data: {
+              type: '{ hello: string; }',
+            },
+            endColumn: 71,
+            endLine: 3,
+            line: 3,
             messageId: 'unsafeTypeAssertion',
           },
         ],
