@@ -860,6 +860,9 @@ a as Promise<number>;
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 21,
             endLine: 3,
             line: 3,
@@ -875,6 +878,9 @@ a as Promise<any>;
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 18,
             endLine: 3,
             line: 3,
@@ -890,6 +896,9 @@ a as Promise<any[]>;
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 20,
             endLine: 3,
             line: 3,
