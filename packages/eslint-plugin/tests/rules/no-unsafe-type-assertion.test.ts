@@ -215,10 +215,31 @@ _any_ as string;
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 16,
             endLine: 3,
             line: 3,
             messageId: 'unsafeOfAnyTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+declare const _unknown_: unknown;
+_unknown_ as any;
+        `,
+        errors: [
+          {
+            column: 1,
+            data: {
+              type: '`any`',
+            },
+            endColumn: 17,
+            endLine: 3,
+            line: 3,
+            messageId: 'unsafeToAnyTypeAssertion',
           },
         ],
       },
@@ -230,6 +251,9 @@ _any_ as Function;
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 18,
             endLine: 3,
             line: 3,
@@ -245,6 +269,9 @@ _any_ as never;
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 15,
             endLine: 3,
             line: 3,
@@ -259,6 +286,9 @@ _any_ as never;
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 13,
             endLine: 2,
             line: 2,
@@ -274,10 +304,30 @@ const bar = foo as number;
         errors: [
           {
             column: 13,
+            data: {
+              type: 'error typed',
+            },
             endColumn: 26,
             endLine: 2,
             line: 2,
             messageId: 'unsafeOfAnyTypeAssertion',
+          },
+        ],
+      },
+      {
+        code: `
+const bar = 'foo' as errorType;
+        `,
+        errors: [
+          {
+            column: 13,
+            data: {
+              type: 'error typed',
+            },
+            endColumn: 31,
+            endLine: 2,
+            line: 2,
+            messageId: 'unsafeToAnyTypeAssertion',
           },
         ],
       },
@@ -306,6 +356,9 @@ _never_ as any;
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 15,
             endLine: 3,
             line: 3,
@@ -368,6 +421,9 @@ _function_ as any;
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 18,
             endLine: 3,
             line: 3,
@@ -499,6 +555,9 @@ a as number[];
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 14,
             endLine: 3,
             line: 3,
@@ -514,6 +573,9 @@ a as any[];
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 11,
             endLine: 3,
             line: 3,
@@ -656,6 +718,9 @@ a as [number];
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 14,
             endLine: 3,
             line: 3,
@@ -671,6 +736,9 @@ a as [number, number];
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 22,
             endLine: 3,
             line: 3,
@@ -686,6 +754,9 @@ a as [any];
         errors: [
           {
             column: 1,
+            data: {
+              type: '`any`',
+            },
             endColumn: 11,
             endLine: 3,
             line: 3,
