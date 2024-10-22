@@ -472,3 +472,223 @@ const foo: Foo = { bar };
     },
   ],
 });
+
+ruleTester.run('no-unsafe-assignment: allowUnsafeNever: false', rule, {
+  valid: [
+    {
+      code: 'const [{ ...x }] = [{ x: 1 }] as [{ x: never }];',
+      options: [{ allowUnsafeNever: false }],
+    },
+    // this is not checked, because there's no annotation to compare it with
+    {
+      code: 'const x = new Set<never>();',
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: 'const [{ [`x${1}`]: x }] = [{ [`x`]: 1 }] as [{ [`x`]: never }];',
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: 'const x: unknown = y as never;',
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: 'const x: unknown[] = y as never[];',
+      options: [{ allowUnsafeNever: false }],
+    },
+    // `[]` is inferred as `never[]`
+    {
+      code: 'const x: string[] = [];',
+      options: [{ allowUnsafeNever: false }],
+    },
+    // this is not checked, because there's no annotation to compare it with
+    {
+      code: 'const x = [];',
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: 'const x: Set<unknown> = y as Set<never>;',
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+type Foo = { bar: unknown };
+const bar: never = 1;
+const foo: Foo = { bar };
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: 'const x = 1 as never;',
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+const x = 1 as never,
+  y = 1;
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: 'function foo(a = 1 as never) {}',
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+class Foo {
+  constructor(private a = 1 as never) {}
+}
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+class Foo {
+  private a = 1 as never;
+}
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+const [x] = 1 as never;
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+const [x] = [] as never[];
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+const x = [...(1 as never)];
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+const x = [...([] as never[])];
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: 'const x = { y: 1 as never };',
+      options: [{ allowUnsafeNever: false }],
+    },
+  ],
+  invalid: [
+    {
+      code: 'const x: any = 1 as never;',
+      errors: [
+        {
+          data: {
+            receiver: '`any`',
+            sender: '`never`',
+          },
+          messageId: 'unsafeAssignment',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: 'const x: Set<string> = new Set<never>();',
+      errors: [
+        {
+          data: {
+            receiver: '`Set<string>`',
+            sender: '`Set<never>`',
+          },
+          messageId: 'unsafeAssignment',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: 'const x: Map<string, string> = new Map<string, never>();',
+      errors: [
+        {
+          data: {
+            receiver: '`Map<string, string>`',
+            sender: '`Map<string, never>`',
+          },
+          messageId: 'unsafeAssignment',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: 'const x: Set<string[]> = new Set<never[]>();',
+      errors: [
+        {
+          data: {
+            receiver: '`Set<string[]>`',
+            sender: '`Set<never[]>`',
+          },
+          messageId: 'unsafeAssignment',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: 'const x: Set<Set<Set<string>>> = new Set<Set<Set<never>>>();',
+      errors: [
+        {
+          data: {
+            receiver: '`Set<Set<Set<string>>>`',
+            sender: '`Set<Set<Set<never>>>`',
+          },
+          messageId: 'unsafeAssignment',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: 'const x: { y: Set<Set<Set<string>>> } = { y: new Set<Set<Set<never>>>() };',
+      errors: [
+        {
+          column: 43,
+          data: {
+            receiver: '`Set<Set<Set<string>>>`',
+            sender: '`Set<Set<Set<never>>>`',
+          },
+          endColumn: 72,
+          messageId: 'unsafeAssignment',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+type T = [string, T[]];
+const test: T = ['string', []] as never;
+      `,
+      errors: [
+        {
+          column: 7,
+          endColumn: 40,
+          line: 3,
+          messageId: 'unsafeAssignment',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+type Foo = { bar: number };
+const bar: never = 1;
+const foo: Foo = { bar };
+      `,
+      errors: [
+        {
+          column: 20,
+          endColumn: 23,
+          line: 4,
+          messageId: 'unsafeAssignment',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+  ],
+});
