@@ -548,3 +548,507 @@ foo\`\${arg}\`;
     },
   ],
 });
+
+ruleTester.run('no-unsafe-argument: allowUnsafeNever: false', rule, {
+  valid: [
+    // unknown function should be ignored
+    {
+      code: `
+doesNotExist(1 as never);
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    // non-function call should be ignored
+    {
+      code: `
+const foo = 1;
+foo(1 as never);
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    // too many arguments should be ignored as this is a TS error
+    {
+      code: `
+declare function foo(arg: number): void;
+foo(1, 1 as never, 2 as never);
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+declare function foo(arg: never): void;
+foo(1 as never);
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+declare function foo(arg: unknown): void;
+foo(1 as never);
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+declare function foo(...arg: never[]): void;
+foo(1, 2, 3, 4 as never);
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+declare function foo(arg: never, arg2: number): void;
+const x = [1 as never, 2] as const;
+foo(...x);
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+declare function foo(arg1: unknown, arg2: Set<unknown>, arg3: unknown[]): void;
+foo(1 as never, new Set<never>(), [] as never[]);
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+declare function foo(...params: [number, string, never]): void;
+foo(1, 'a', 1 as never);
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    // Unfortunately - we cannot handle this case because TS infers `params` to be a tuple type
+    // that tuple type is the same as the type of
+    {
+      code: `
+declare function foo<E extends string[]>(...params: E): void;
+
+foo('a', 'b', 1 as never);
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+declare function toHaveBeenCalledWith<E extends never[]>(...params: E): void;
+toHaveBeenCalledWith(1 as never);
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+function foo(templates: TemplateStringsArray, arg: never) {}
+foo\`\${1 as never}\`;
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+  ],
+  invalid: [
+    {
+      code: `
+declare function foo(arg: number): void;
+foo(1 as never);
+      `,
+      errors: [
+        {
+          column: 5,
+          data: {
+            receiver: '`number`',
+            sender: '`never`',
+          },
+          endColumn: 15,
+          line: 3,
+          messageId: 'unsafeArgument',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+declare function foo(arg: any): void;
+foo(1 as never);
+      `,
+      errors: [
+        {
+          column: 5,
+          data: {
+            receiver: '`any`',
+            sender: '`never`',
+          },
+          endColumn: 15,
+          line: 3,
+          messageId: 'unsafeArgument',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+declare function foo(arg1: number, arg2: string): void;
+foo(1, 1 as never);
+      `,
+      errors: [
+        {
+          column: 8,
+          data: {
+            receiver: '`string`',
+            sender: '`never`',
+          },
+          endColumn: 18,
+          line: 3,
+          messageId: 'unsafeArgument',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+declare function foo(...arg: number[]): void;
+foo(1, 2, 3, 1 as never);
+      `,
+      errors: [
+        {
+          column: 14,
+          data: {
+            receiver: '`number`',
+            sender: '`never`',
+          },
+          endColumn: 24,
+          line: 3,
+          messageId: 'unsafeArgument',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+declare function foo(arg: string, ...arg: number[]): void;
+foo(1 as never, 1 as never);
+      `,
+      errors: [
+        {
+          column: 5,
+          data: {
+            receiver: '`string`',
+            sender: '`never`',
+          },
+          endColumn: 15,
+          line: 3,
+          messageId: 'unsafeArgument',
+        },
+        {
+          column: 17,
+          data: {
+            receiver: '`number`',
+            sender: '`never`',
+          },
+          endColumn: 27,
+          line: 3,
+          messageId: 'unsafeArgument',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+declare function foo(arg1: string, arg2: number): void;
+
+foo(...(x as never));
+      `,
+      errors: [
+        {
+          column: 5,
+          endColumn: 20,
+          line: 4,
+          messageId: 'unsafeSpread',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+declare function foo(arg1: string, arg2: number): void;
+
+foo(...(x as never[]));
+      `,
+      errors: [
+        {
+          column: 5,
+          data: { sender: '`never[]`' },
+          endColumn: 22,
+          line: 4,
+          messageId: 'unsafeArraySpread',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+declare function foo(arg1: string, arg2: number): void;
+
+const x = ['a', 1 as never] as const;
+foo(...x);
+      `,
+      errors: [
+        {
+          column: 5,
+          data: {
+            receiver: '`number`',
+            sender: 'of type `never`',
+          },
+          endColumn: 9,
+          line: 5,
+          messageId: 'unsafeTupleSpread',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+declare function foo(arg1: string, arg2: number): void;
+foo(...(['foo', 1, 2] as [string, never, number]));
+      `,
+      errors: [
+        {
+          column: 5,
+          data: {
+            receiver: '`number`',
+            sender: 'of type `never`',
+          },
+          endColumn: 50,
+          line: 3,
+          messageId: 'unsafeTupleSpread',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+declare function foo(arg1: string, arg2: number, arg2: string): void;
+
+const x = [1] as const;
+foo('a', ...x, 1 as never);
+      `,
+      errors: [
+        {
+          column: 16,
+          data: {
+            receiver: '`string`',
+            sender: '`never`',
+          },
+          endColumn: 26,
+          line: 5,
+          messageId: 'unsafeArgument',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+declare function foo(arg1: string, arg2: number, ...rest: string[]): void;
+
+const x = [1, 2] as [number, ...number[]];
+foo('a', ...x, 1 as never);
+      `,
+      errors: [
+        {
+          column: 16,
+          data: {
+            receiver: '`string`',
+            sender: '`never`',
+          },
+          endColumn: 26,
+          line: 5,
+          messageId: 'unsafeArgument',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+
+    {
+      code: `
+declare function foo(arg1: Set<string>, arg2: Map<string, string>): void;
+
+const x = [new Map<never, string>()] as const;
+foo(new Set<never>(), ...x);
+      `,
+      errors: [
+        {
+          column: 5,
+          data: {
+            receiver: '`Set<string>`',
+            sender: '`Set<never>`',
+          },
+          endColumn: 21,
+          line: 5,
+          messageId: 'unsafeArgument',
+        },
+        {
+          column: 23,
+          data: {
+            receiver: '`Map<string, string>`',
+            sender: 'of type `Map<never, string>`',
+          },
+          endColumn: 27,
+          line: 5,
+          messageId: 'unsafeTupleSpread',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+declare function foo(...params: [number, string, never]): void;
+foo(1 as never, 'a' as never, 1 as never);
+      `,
+      errors: [
+        {
+          column: 5,
+          data: {
+            receiver: '`number`',
+            sender: '`never`',
+          },
+          endColumn: 15,
+          line: 3,
+          messageId: 'unsafeArgument',
+        },
+        {
+          column: 17,
+          data: {
+            receiver: '`string`',
+            sender: '`never`',
+          },
+          endColumn: 29,
+          line: 3,
+          messageId: 'unsafeArgument',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+declare function foo(param1: string, ...params: [number, string, never]): void;
+foo('a', 1 as never, 'a' as never, 1 as never);
+      `,
+      errors: [
+        {
+          column: 10,
+          data: {
+            receiver: '`number`',
+            sender: '`never`',
+          },
+          endColumn: 20,
+          line: 3,
+          messageId: 'unsafeArgument',
+        },
+        {
+          column: 22,
+          data: {
+            receiver: '`string`',
+            sender: '`never`',
+          },
+          endColumn: 34,
+          line: 3,
+          messageId: 'unsafeArgument',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+type T = [number, T[]];
+declare function foo(t: T): void;
+declare const t: T;
+foo(t as never);
+      `,
+      errors: [
+        {
+          column: 5,
+          data: {
+            receiver: '`T`',
+            sender: '`never`',
+          },
+          endColumn: 15,
+          line: 5,
+          messageId: 'unsafeArgument',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+function foo(
+  templates: TemplateStringsArray,
+  arg1: number,
+  arg2: never,
+  arg3: string,
+) {}
+declare const arg: never;
+foo<number>\`\${arg}\${arg}\${arg}\`;
+      `,
+      errors: [
+        {
+          column: 15,
+          data: {
+            receiver: '`number`',
+            sender: '`never`',
+          },
+          endColumn: 18,
+          line: 9,
+          messageId: 'unsafeArgument',
+        },
+        {
+          column: 27,
+          data: {
+            receiver: '`string`',
+            sender: '`never`',
+          },
+          endColumn: 30,
+          line: 9,
+          messageId: 'unsafeArgument',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+function foo(templates: TemplateStringsArray, arg: number) {}
+declare const arg: never;
+foo\`\${arg}\`;
+      `,
+      errors: [
+        {
+          column: 7,
+          data: {
+            receiver: '`number`',
+            sender: '`never`',
+          },
+          endColumn: 10,
+          line: 4,
+          messageId: 'unsafeArgument',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+type T = [number, T[]];
+function foo(templates: TemplateStringsArray, arg: T) {}
+declare const arg: never;
+foo\`\${arg}\`;
+      `,
+      errors: [
+        {
+          column: 7,
+          data: {
+            receiver: '`T`',
+            sender: '`never`',
+          },
+          endColumn: 10,
+          line: 5,
+          messageId: 'unsafeArgument',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+  ],
+});

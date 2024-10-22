@@ -10,6 +10,8 @@ import {
   isRestParameterDeclaration,
   isTypeAnyArrayType,
   isTypeAnyType,
+  isTypeNeverArrayType,
+  isTypeNeverType,
   isUnsafeAssignment,
   nullThrows,
 } from '../util';
@@ -245,16 +247,23 @@ export default createRule<Options, MessageIds>({
           case AST_NODE_TYPES.SpreadElement: {
             const spreadArgType = services.getTypeAtLocation(argument.argument);
 
-            if (isTypeAnyType(spreadArgType)) {
+            if (
               // foo(...any)
+              isTypeAnyType(spreadArgType) ||
+              // foo(...never)
+              (!allowUnsafeNever && isTypeNeverType(spreadArgType))
+            ) {
               context.report({
                 node: argument,
                 messageId: 'unsafeSpread',
                 data: { sender: describeType(spreadArgType) },
               });
-            } else if (isTypeAnyArrayType(spreadArgType, checker)) {
+            } else if (
               // foo(...any[])
-
+              isTypeAnyArrayType(spreadArgType, checker) ||
+              // foo(...never[])
+              isTypeNeverArrayType(spreadArgType, checker)
+            ) {
               // TODO - we could break down the spread and compare the array type against each argument
               context.report({
                 node: argument,
