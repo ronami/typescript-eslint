@@ -18,6 +18,20 @@ import {
   NullThrowsReasons,
 } from '../util';
 
+type Options = [
+  {
+    allowUnsafeNever: boolean;
+  },
+];
+
+type MessageIds =
+  | 'anyAssignment'
+  | 'anyAssignmentThis'
+  | 'unsafeArrayPattern'
+  | 'unsafeArrayPatternFromTuple'
+  | 'unsafeArraySpread'
+  | 'unsafeAssignment';
+
 const enum ComparisonType {
   /** Do no assignment comparison */
   None,
@@ -27,13 +41,13 @@ const enum ComparisonType {
   Contextual,
 }
 
-export default createRule({
+export default createRule<Options, MessageIds>({
   name: 'no-unsafe-assignment',
   meta: {
     type: 'problem',
     docs: {
       description:
-        'Disallow assigning a value with type `any` to variables and properties',
+        'Disallow assigning a value with type `any` or `never` to variables and properties',
       recommended: 'recommended',
       requiresTypeChecking: true,
     },
@@ -51,10 +65,22 @@ export default createRule({
       unsafeAssignment:
         'Unsafe assignment of type {{sender}} to a variable of type {{receiver}}.',
     },
-    schema: [],
+    schema: [
+      {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          allowUnsafeNever: {
+            type: 'boolean',
+            description:
+              'Allows the use of `never` in potentially unsafe contexts.',
+          },
+        },
+      },
+    ],
   },
-  defaultOptions: [],
-  create(context) {
+  defaultOptions: [{ allowUnsafeNever: true }],
+  create(context, [{ allowUnsafeNever }]) {
     const services = getParserServices(context);
     const checker = services.program.getTypeChecker();
     const compilerOptions = services.program.getCompilerOptions();
@@ -294,6 +320,7 @@ export default createRule({
         senderType,
         receiverType,
         checker,
+        allowUnsafeNever,
         senderNode,
       );
       if (!result) {
