@@ -722,3 +722,623 @@ async function foo() {
     },
   ],
 });
+
+ruleTester.run('no-unsafe-return: allowUnsafeNever: false', rule, {
+  valid: [
+    // `[]` is inferred as `never[]` without an explicit return type annotation
+    {
+      code: `
+function foo() {
+  return [];
+}
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    // explicit `never` return type is allowed, if you want to be unsafe like that
+    {
+      code: `
+function foo(): never {
+  return {} as never;
+}
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+declare function foo(arg: () => never): void;
+foo((): never => 'foo' as never);
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+declare function foo(arg: null | (() => never)): void;
+foo((): never => 'foo' as never);
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    // explicit `never` array return type is allowed, if you want to be unsafe like that
+    {
+      code: `
+function foo(): never[] {
+  return [] as never[];
+}
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    // explicit `never` generic return type is allowed, if you want to be unsafe like that
+    {
+      code: `
+function foo(): Set<never> {
+  return new Set<never>();
+}
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+async function foo(): Promise<never> {
+  return Promise.resolve({} as never);
+}
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+async function foo(): Promise<never> {
+  return {} as never;
+}
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+function foo(): object {
+  return Promise.resolve({} as never);
+}
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+type Foo = { prop: never };
+function foo(): Foo {
+  return { prop: '' } as Foo;
+}
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+function fn<T extends never>(x: T): unknown {
+  return x as never;
+}
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+function fn<T extends never>(x: T): unknown[] {
+  return x as never[];
+}
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+function fn<T extends never>(x: T): Set<unknown> {
+  return x as Set<never>;
+}
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+async function fn<T extends never>(x: T): Promise<unknown> {
+  return x as never;
+}
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+function fn<T extends never>(x: T): Promise<unknown> {
+  return Promise.resolve(x as never);
+}
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+function foo(): unknown {
+  return [] as never[];
+}
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+declare const value: Promise<never>;
+function foo() {
+  return value;
+}
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
+  ],
+  invalid: [
+    {
+      code: `
+function foo() {
+  return 1 as never;
+}
+      `,
+      errors: [
+        {
+          data: {
+            type: '`never`',
+          },
+          messageId: 'unsafeReturn',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+const foo = () => {
+  return 1 as never;
+};
+      `,
+      errors: [
+        {
+          data: {
+            type: '`never`',
+          },
+          messageId: 'unsafeReturn',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+function foo() {
+  return [] as never[];
+}
+      `,
+      errors: [
+        {
+          data: {
+            type: '`never[]`',
+          },
+          messageId: 'unsafeReturn',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+function foo() {
+  return [] as Array<never>;
+}
+      `,
+      errors: [
+        {
+          data: {
+            type: '`never[]`',
+          },
+          messageId: 'unsafeReturn',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+function foo() {
+  return [] as readonly never[];
+}
+      `,
+      errors: [
+        {
+          data: {
+            type: '`never[]`',
+          },
+          messageId: 'unsafeReturn',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+function foo() {
+  return [] as Readonly<never[]>;
+}
+      `,
+      errors: [
+        {
+          data: {
+            type: '`never[]`',
+          },
+          messageId: 'unsafeReturn',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+const foo = () => {
+  return [] as never[];
+};
+      `,
+      errors: [
+        {
+          data: {
+            type: '`never[]`',
+          },
+          messageId: 'unsafeReturn',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: 'const foo = () => [] as never[];',
+      errors: [
+        {
+          data: {
+            type: '`never[]`',
+          },
+          messageId: 'unsafeReturn',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+function foo(): Set<string> {
+  return new Set<never>();
+}
+      `,
+      errors: [
+        {
+          data: {
+            receiver: 'Set<string>',
+            sender: 'Set<never>',
+          },
+          messageId: 'unsafeReturnAssignment',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+function foo(): Map<string, string> {
+  return new Map<string, never>();
+}
+      `,
+      errors: [
+        {
+          data: {
+            receiver: 'Map<string, string>',
+            sender: 'Map<string, never>',
+          },
+          messageId: 'unsafeReturnAssignment',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+function foo(): Set<string[]> {
+  return new Set<never[]>();
+}
+      `,
+      errors: [
+        {
+          data: {
+            receiver: 'Set<string[]>',
+            sender: 'Set<never[]>',
+          },
+          messageId: 'unsafeReturnAssignment',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+function foo(): Set<Set<Set<string>>> {
+  return new Set<Set<Set<never>>>();
+}
+      `,
+      errors: [
+        {
+          data: {
+            receiver: 'Set<Set<Set<string>>>',
+            sender: 'Set<Set<Set<never>>>',
+          },
+          messageId: 'unsafeReturnAssignment',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+
+    {
+      code: `
+type Fn = () => Set<string>;
+const foo1: Fn = () => new Set<never>();
+const foo2: Fn = function test() {
+  return new Set<never>();
+};
+      `,
+      errors: [
+        {
+          data: {
+            receiver: 'Set<string>',
+            sender: 'Set<never>',
+          },
+          line: 3,
+          messageId: 'unsafeReturnAssignment',
+        },
+        {
+          data: {
+            receiver: 'Set<string>',
+            sender: 'Set<never>',
+          },
+          line: 5,
+          messageId: 'unsafeReturnAssignment',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+type Fn = () => Set<string>;
+function receiver(arg: Fn) {}
+receiver(() => new Set<never>());
+receiver(function test() {
+  return new Set<never>();
+});
+      `,
+      errors: [
+        {
+          data: {
+            receiver: 'Set<string>',
+            sender: 'Set<never>',
+          },
+          line: 4,
+          messageId: 'unsafeReturnAssignment',
+        },
+        {
+          data: {
+            receiver: 'Set<string>',
+            sender: 'Set<never>',
+          },
+          line: 6,
+          messageId: 'unsafeReturnAssignment',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+declare function foo(arg: null | (() => never)): void;
+foo(() => 'foo' as never);
+      `,
+      errors: [
+        {
+          column: 11,
+          data: {
+            type: '`never`',
+          },
+          endColumn: 25,
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+declare const value: never;
+async function foo() {
+  return value;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: {
+            type: '`never`',
+          },
+          line: 4,
+          messageId: 'unsafeReturn',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+declare const value: Promise<never>;
+async function foo(): Promise<number> {
+  return value;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: {
+            type: '`Promise<never>`',
+          },
+          line: 4,
+          messageId: 'unsafeReturn',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+async function foo(arg: number) {
+  return arg as Promise<never>;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: {
+            type: '`Promise<never>`',
+          },
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+function foo(): Promise<never> {
+  return {} as never;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: {
+            type: '`never`',
+          },
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+function foo(): Promise<object> {
+  return {} as never;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: {
+            type: '`never`',
+          },
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+async function foo(): Promise<object> {
+  return Promise.resolve<never>({});
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: {
+            type: '`Promise<never>`',
+          },
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+async function foo(): Promise<object> {
+  return Promise.resolve<Promise<Promise<never>>>({} as Promise<never>);
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: {
+            type: '`Promise<never>`',
+          },
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+async function foo(): Promise<object> {
+  return {} as Promise<Promise<Promise<Promise<never>>>>;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: {
+            type: '`Promise<never>`',
+          },
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+async function foo() {
+  return {} as Promise<Promise<Promise<Promise<never>>>>;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: {
+            type: '`Promise<never>`',
+          },
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+async function foo() {
+  return {} as Promise<never> | Promise<object>;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: {
+            type: '`Promise<never>`',
+          },
+          line: 3,
+          messageId: 'unsafeReturn',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+interface Alias<T> extends Promise<never> {
+  foo: 'bar';
+}
+
+declare const value: Alias<number>;
+async function foo() {
+  return value;
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: {
+            type: '`Promise<never>`',
+          },
+          line: 8,
+          messageId: 'unsafeReturn',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+  ],
+});

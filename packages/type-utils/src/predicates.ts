@@ -96,6 +96,19 @@ export function isTypeAnyArrayType(
 }
 
 /**
+ * @returns true if the type is `never[]`
+ */
+export function isTypeNeverArrayType(
+  type: ts.Type,
+  checker: ts.TypeChecker,
+): boolean {
+  return (
+    checker.isArrayType(type) &&
+    isTypeNeverType(checker.getTypeArguments(type)[0])
+  );
+}
+
+/**
  * @returns true if the type is `unknown[]`
  */
 export function isTypeUnknownArrayType(
@@ -108,46 +121,58 @@ export function isTypeUnknownArrayType(
   );
 }
 
-export enum AnyType {
+export enum UnsafeType {
   Any,
+  Never,
   PromiseAny,
+  PromiseNever,
   AnyArray,
+  NeverArray,
   Safe,
 }
 /**
- * @returns `AnyType.Any` if the type is `any`, `AnyType.AnyArray` if the type is `any[]` or `readonly any[]`, `AnyType.PromiseAny` if the type is `Promise<any>`,
- *          otherwise it returns `AnyType.Safe`.
+ * @returns `SafeType.Any` if the type is `any`, `SafeType.AnyArray` if the type is `any[]` or `readonly any[]`, `SafeType.PromiseAny` if the type is `Promise<any>`,
+ *          otherwise it returns `SafeType.Safe`.
  */
-export function discriminateAnyType(
+export function discriminateUnsafeType(
   type: ts.Type,
   checker: ts.TypeChecker,
   program: ts.Program,
   tsNode: ts.Node,
-): AnyType {
+): UnsafeType {
   if (isTypeAnyType(type)) {
-    return AnyType.Any;
+    return UnsafeType.Any;
+  }
+  if (isTypeNeverType(type)) {
+    return UnsafeType.Never;
   }
   if (isTypeAnyArrayType(type, checker)) {
-    return AnyType.AnyArray;
+    return UnsafeType.AnyArray;
+  }
+  if (isTypeNeverArrayType(type, checker)) {
+    return UnsafeType.NeverArray;
   }
   for (const part of tsutils.typeParts(type)) {
     if (tsutils.isThenableType(checker, tsNode, type)) {
       const awaitedType = checker.getAwaitedType(part);
       if (awaitedType) {
-        const awaitedAnyType = discriminateAnyType(
+        const awaitedUnsafeType = discriminateUnsafeType(
           awaitedType,
           checker,
           program,
           tsNode,
         );
-        if (awaitedAnyType === AnyType.Any) {
-          return AnyType.PromiseAny;
+        if (awaitedUnsafeType === UnsafeType.Any) {
+          return UnsafeType.PromiseAny;
+        }
+        if (awaitedUnsafeType === UnsafeType.Never) {
+          return UnsafeType.PromiseNever;
         }
       }
     }
   }
 
-  return AnyType.Safe;
+  return UnsafeType.Safe;
 }
 
 /**
