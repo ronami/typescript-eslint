@@ -57,7 +57,13 @@ function isUnsafeAssignmentWorker(
   }
 
   if (!allowUnsafeNever && isTypeNeverType(type)) {
+    // allow never ==> never
     if (isTypeNeverType(receiver)) {
+      return false;
+    }
+
+    // allow never ==> unknown
+    if (isTypeUnknownType(receiver)) {
       return false;
     }
 
