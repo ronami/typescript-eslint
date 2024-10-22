@@ -641,6 +641,23 @@ foo\`\${1 as never}\`;
       `,
       options: [{ allowUnsafeNever: false }],
     },
+    {
+      code: `
+function assertNever(arg: never) {
+  throw new Error();
+}
+
+function test(x: 'a') {
+  switch (x) {
+    case 'a':
+      return;
+    default:
+      assertNever(x);
+  }
+}
+      `,
+      options: [{ allowUnsafeNever: false }],
+    },
   ],
   invalid: [
     {
@@ -1045,6 +1062,35 @@ foo\`\${arg}\`;
           },
           endColumn: 10,
           line: 5,
+          messageId: 'unsafeArgument',
+        },
+      ],
+      options: [{ allowUnsafeNever: false }],
+    },
+    {
+      code: `
+function doesSomething(arg: string) {
+  return arg.toUpperCase();
+}
+
+function test(x: 'a') {
+  switch (x) {
+    case 'a':
+      return;
+    default:
+      doesSomething(x);
+  }
+}
+      `,
+      errors: [
+        {
+          column: 21,
+          data: {
+            receiver: '`string`',
+            sender: '`never`',
+          },
+          endColumn: 22,
+          line: 11,
           messageId: 'unsafeArgument',
         },
       ],
