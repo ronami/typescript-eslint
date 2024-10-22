@@ -19,7 +19,18 @@ import {
   isUnsafeAssignment,
 } from '../util';
 
-export default createRule({
+type Options = [
+  {
+    allowUnsafeNever: boolean;
+  },
+];
+
+type MessageIds =
+  | 'unsafeReturn'
+  | 'unsafeReturnAssignment'
+  | 'unsafeReturnThis';
+
+export default createRule<Options, MessageIds>({
   name: 'no-unsafe-return',
   meta: {
     type: 'problem',
@@ -37,10 +48,22 @@ export default createRule({
         'You can try to fix this by turning on the `noImplicitThis` compiler option, or adding a `this` parameter to the function.',
       ].join('\n'),
     },
-    schema: [],
+    schema: [
+      {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          allowUnsafeNever: {
+            type: 'boolean',
+            description:
+              'Allows the use of `never` in potentially unsafe contexts.',
+          },
+        },
+      },
+    ],
   },
-  defaultOptions: [],
-  create(context) {
+  defaultOptions: [{ allowUnsafeNever: true }],
+  create(context, [{ allowUnsafeNever }]) {
     const services = getParserServices(context);
     const checker = services.program.getTypeChecker();
     const compilerOptions = services.program.getCompilerOptions();
@@ -214,6 +237,7 @@ export default createRule({
           returnNodeType,
           functionReturnType,
           checker,
+          allowUnsafeNever,
           returnNode,
         );
         if (!result) {
