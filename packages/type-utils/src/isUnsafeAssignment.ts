@@ -4,7 +4,11 @@ import type * as ts from 'typescript';
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 import * as tsutils from 'ts-api-utils';
 
-import { isTypeAnyType, isTypeUnknownType } from './predicates';
+import {
+  isTypeAnyType,
+  isTypeNeverType,
+  isTypeUnknownType,
+} from './predicates';
 
 /**
  * Does a simple check to see if there is an any being assigned to a non-any type.
@@ -20,12 +24,14 @@ export function isUnsafeAssignment(
   type: ts.Type,
   receiver: ts.Type,
   checker: ts.TypeChecker,
+  allowUnsafeNever: boolean,
   senderNode: TSESTree.Node | null,
 ): { receiver: ts.Type; sender: ts.Type } | false {
   return isUnsafeAssignmentWorker(
     type,
     receiver,
     checker,
+    allowUnsafeNever,
     senderNode,
     new Map(),
   );
@@ -35,6 +41,7 @@ function isUnsafeAssignmentWorker(
   type: ts.Type,
   receiver: ts.Type,
   checker: ts.TypeChecker,
+  allowUnsafeNever: boolean,
   senderNode: TSESTree.Node | null,
   visited: Map<ts.Type, Set<ts.Type>>,
 ): { receiver: ts.Type; sender: ts.Type } | false {
@@ -47,6 +54,23 @@ function isUnsafeAssignmentWorker(
     if (!isTypeAnyType(receiver)) {
       return { receiver, sender: type };
     }
+  }
+
+  if (!allowUnsafeNever && isTypeNeverType(type)) {
+    if (isTypeNeverType(receiver)) {
+      return false;
+    }
+
+    if (
+      senderNode?.type === AST_NODE_TYPES.ArrayExpression &&
+      senderNode.elements.length === 0
+    ) {
+      // special case to handle `const a: string[] = []`, unfortunately `[]` is
+      // inferred as `never[]`
+      return false;
+    }
+
+    return { receiver, sender: type };
   }
 
   const typeAlreadyVisited = visited.get(type);
@@ -104,6 +128,7 @@ function isUnsafeAssignmentWorker(
         arg,
         receiverArg,
         checker,
+        allowUnsafeNever,
         senderNode,
         visited,
       );
