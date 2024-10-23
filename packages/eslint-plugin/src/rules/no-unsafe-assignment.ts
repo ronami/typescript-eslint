@@ -316,6 +316,15 @@ export default createRule<Options, MessageIds>({
         return false;
       }
 
+      // special case to handle `const a: string[] = []`, unfortunately `[]` is
+      // inferred as `never[]`
+      if (
+        senderNode.type === AST_NODE_TYPES.ArrayExpression &&
+        senderNode.elements.length === 0
+      ) {
+        return false;
+      }
+
       const result = isUnsafeAssignment(
         senderType,
         receiverType,

@@ -232,6 +232,8 @@ export default createRule<Options, MessageIds>({
           return;
         }
 
+        // special case to handle `return []`, unfortunately `[]` is
+        // inferred as `never[]`
         if (
           returnNode.type === AST_NODE_TYPES.ArrayExpression &&
           returnNode.elements.length === 0

@@ -67,15 +67,6 @@ function isUnsafeAssignmentWorker(
       return false;
     }
 
-    if (
-      senderNode?.type === AST_NODE_TYPES.ArrayExpression &&
-      senderNode.elements.length === 0
-    ) {
-      // special case to handle `const a: string[] = []`, unfortunately `[]` is
-      // inferred as `never[]`
-      return false;
-    }
-
     return { receiver, sender: type };
   }
 
