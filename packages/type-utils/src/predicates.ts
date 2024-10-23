@@ -132,6 +132,7 @@ export enum UnsafeType {
 }
 /**
  * @returns `SafeType.Any` if the type is `any`, `SafeType.AnyArray` if the type is `any[]` or `readonly any[]`, `SafeType.PromiseAny` if the type is `Promise<any>`,
+ *          similarly returns `SafeType.Never` if the type is `never`, `SafeType.NeverArray` if the type is `never[]` or `readonly never[]`, `SafeType.PromiseNever` if the type is `Promise<never>`,
  *          otherwise it returns `SafeType.Safe`.
  */
 export function discriminateUnsafeType(
