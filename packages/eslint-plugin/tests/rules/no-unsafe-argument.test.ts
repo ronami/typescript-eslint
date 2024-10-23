@@ -769,22 +769,6 @@ foo(1 as never, 1 as never);
       code: `
 declare function foo(arg1: string, arg2: number): void;
 
-foo(...(x as never));
-      `,
-      errors: [
-        {
-          column: 5,
-          endColumn: 20,
-          line: 4,
-          messageId: 'unsafeSpread',
-        },
-      ],
-      options: [{ allowUnsafeNever: false }],
-    },
-    {
-      code: `
-declare function foo(arg1: string, arg2: number): void;
-
 foo(...(x as never[]));
       `,
       errors: [

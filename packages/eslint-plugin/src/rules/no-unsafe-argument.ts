@@ -247,12 +247,8 @@ export default createRule<Options, MessageIds>({
           case AST_NODE_TYPES.SpreadElement: {
             const spreadArgType = services.getTypeAtLocation(argument.argument);
 
-            if (
-              // foo(...any)
-              isTypeAnyType(spreadArgType) ||
-              // foo(...never)
-              (!allowUnsafeNever && isTypeNeverType(spreadArgType))
-            ) {
+            // foo(...any)
+            if (isTypeAnyType(spreadArgType)) {
               context.report({
                 node: argument,
                 messageId: 'unsafeSpread',
