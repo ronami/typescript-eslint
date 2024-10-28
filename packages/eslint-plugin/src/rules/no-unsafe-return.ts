@@ -4,9 +4,8 @@ import * as tsutils from 'ts-api-utils';
 import * as ts from 'typescript';
 
 import {
-  AnyType,
   createRule,
-  discriminateAnyType,
+  discriminateUnsafeType,
   getConstrainedTypeAtLocation,
   getContextualType,
   getParserServices,
@@ -16,6 +15,7 @@ import {
   isTypeUnknownArrayType,
   isTypeUnknownType,
   isUnsafeAssignment,
+  UnsafeType,
 } from '../util';
 import { getParentFunctionNode } from '../util/getParentFunctionNode';
 
@@ -73,6 +73,25 @@ export default createRule<Options, MessageIds>({
       'noImplicitThis',
     );
 
+    function getUnsafeTypeName(
+      unsafeType: Exclude<UnsafeType, UnsafeType.Safe>,
+    ): string {
+      switch (unsafeType) {
+        case UnsafeType.Any:
+          return '`any`';
+        case UnsafeType.AnyArray:
+          return '`any[]`';
+        case UnsafeType.Never:
+          return '`never`';
+        case UnsafeType.NeverArray:
+          return '`never[]`';
+        case UnsafeType.PromiseAny:
+          return '`Promise<any>`';
+        case UnsafeType.PromiseNever:
+          return '`Promise<never>`';
+      }
+    }
+
     function checkReturn(
       returnNode: TSESTree.Node,
       reportingNode: TSESTree.Node = returnNode,
@@ -80,7 +99,7 @@ export default createRule<Options, MessageIds>({
       const tsNode = services.esTreeNodeToTSNodeMap.get(returnNode);
       const type = checker.getTypeAtLocation(tsNode);
 
-      const anyType = discriminateAnyType(
+      const unsafeType = discriminateUnsafeType(
         type,
         checker,
         services.program,
@@ -143,19 +162,21 @@ export default createRule<Options, MessageIds>({
         }
       }
 
-      if (anyType !== AnyType.Safe) {
+      if (unsafeType !== UnsafeType.Safe) {
         // Allow cases when the declared return type of the function is either unknown or unknown[]
         // and the function is returning any or any[].
         for (const signature of callSignatures) {
           const functionReturnType = signature.getReturnType();
           if (
-            anyType === AnyType.Any &&
+            (unsafeType === UnsafeType.Any ||
+              unsafeType === UnsafeType.Never) &&
             isTypeUnknownType(functionReturnType)
           ) {
             return;
           }
           if (
-            anyType === AnyType.AnyArray &&
+            (unsafeType === UnsafeType.AnyArray ||
+              unsafeType === UnsafeType.NeverArray) &&
             isTypeUnknownArrayType(functionReturnType, checker)
           ) {
             return;
@@ -163,14 +184,19 @@ export default createRule<Options, MessageIds>({
           const awaitedType = checker.getAwaitedType(functionReturnType);
           if (
             awaitedType &&
-            anyType === AnyType.PromiseAny &&
+            (unsafeType === UnsafeType.PromiseAny ||
+              unsafeType === UnsafeType.PromiseNever) &&
             isTypeUnknownType(awaitedType)
           ) {
             return;
           }
         }
 
-        if (anyType === AnyType.PromiseAny && !functionNode.async) {
+        if (
+          (unsafeType === UnsafeType.PromiseAny ||
+            unsafeType === UnsafeType.PromiseNever) &&
+          !functionNode.async
+        ) {
           return;
         }
 
@@ -195,13 +221,7 @@ export default createRule<Options, MessageIds>({
           node: reportingNode,
           messageId,
           data: {
-            type: isErrorType
-              ? 'error'
-              : anyType === AnyType.Any
-                ? '`any`'
-                : anyType === AnyType.PromiseAny
-                  ? '`Promise<any>`'
-                  : '`any[]`',
+            type: isErrorType ? 'error' : getUnsafeTypeName(unsafeType),
           },
         });
       }
