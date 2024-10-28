@@ -19,12 +19,24 @@ import {
 } from '../util';
 import { getParentFunctionNode } from '../util/getParentFunctionNode';
 
-export default createRule({
+type Options = [
+  {
+    allowUnsafeNever: boolean;
+  },
+];
+
+type MessageIds =
+  | 'unsafeReturn'
+  | 'unsafeReturnAssignment'
+  | 'unsafeReturnThis';
+
+export default createRule<Options, MessageIds>({
   name: 'no-unsafe-return',
   meta: {
     type: 'problem',
     docs: {
-      description: 'Disallow returning a value with type `any` from a function',
+      description:
+        'Disallow returning a value with type `any` or `never` from a function',
       recommended: 'recommended',
       requiresTypeChecking: true,
     },
@@ -37,10 +49,22 @@ export default createRule({
         'You can try to fix this by turning on the `noImplicitThis` compiler option, or adding a `this` parameter to the function.',
       ].join('\n'),
     },
-    schema: [],
+    schema: [
+      {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          allowUnsafeNever: {
+            type: 'boolean',
+            description:
+              'Allows the use of `never` in potentially unsafe contexts.',
+          },
+        },
+      },
+    ],
   },
-  defaultOptions: [],
-  create(context) {
+  defaultOptions: [{ allowUnsafeNever: true }],
+  create(context, [{ allowUnsafeNever }]) {
     const services = getParserServices(context);
     const checker = services.program.getTypeChecker();
     const compilerOptions = services.program.getCompilerOptions();
@@ -189,7 +213,7 @@ export default createRule({
           returnNodeType,
           functionReturnType,
           checker,
-          false,
+          allowUnsafeNever,
           returnNode,
         );
         if (!result) {
