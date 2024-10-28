@@ -96,6 +96,19 @@ export function isTypeAnyArrayType(
 }
 
 /**
+ * @returns true if the type is `never[]`
+ */
+export function isTypeNeverArrayType(
+  type: ts.Type,
+  checker: ts.TypeChecker,
+): boolean {
+  return (
+    checker.isArrayType(type) &&
+    isTypeNeverType(checker.getTypeArguments(type)[0])
+  );
+}
+
+/**
  * @returns true if the type is `unknown[]`
  */
 export function isTypeUnknownArrayType(
