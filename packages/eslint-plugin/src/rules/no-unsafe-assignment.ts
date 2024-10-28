@@ -12,11 +12,27 @@ import {
   getThisExpression,
   isTypeAnyArrayType,
   isTypeAnyType,
+  isTypeNeverArrayType,
+  isTypeNeverType,
   isTypeUnknownType,
   isUnsafeAssignment,
   nullThrows,
   NullThrowsReasons,
 } from '../util';
+
+type Options = [
+  {
+    allowUnsafeNever: boolean;
+  },
+];
+
+type MessageIds =
+  | 'anyAssignment'
+  | 'anyAssignmentThis'
+  | 'unsafeArrayPattern'
+  | 'unsafeArrayPatternFromTuple'
+  | 'unsafeArraySpread'
+  | 'unsafeAssignment';
 
 const enum ComparisonType {
   /** Do no assignment comparison */
@@ -27,13 +43,13 @@ const enum ComparisonType {
   Contextual,
 }
 
-export default createRule({
+export default createRule<Options, MessageIds>({
   name: 'no-unsafe-assignment',
   meta: {
     type: 'problem',
     docs: {
       description:
-        'Disallow assigning a value with type `any` to variables and properties',
+        'Disallow assigning a value with type `any` or `never` to variables and properties',
       recommended: 'recommended',
       requiresTypeChecking: true,
     },
@@ -51,10 +67,22 @@ export default createRule({
       unsafeAssignment:
         'Unsafe assignment of type {{sender}} to a variable of type {{receiver}}.',
     },
-    schema: [],
+    schema: [
+      {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          allowUnsafeNever: {
+            type: 'boolean',
+            description:
+              'Allows the use of `never` in potentially unsafe contexts.',
+          },
+        },
+      },
+    ],
   },
-  defaultOptions: [],
-  create(context) {
+  defaultOptions: [{ allowUnsafeNever: true }],
+  create(context, [{ allowUnsafeNever }]) {
     const services = getParserServices(context);
     const checker = services.program.getTypeChecker();
     const compilerOptions = services.program.getCompilerOptions();
@@ -294,7 +322,7 @@ export default createRule({
         senderType,
         receiverType,
         checker,
-        false,
+        allowUnsafeNever,
         senderNode,
       );
       if (!result) {
@@ -333,7 +361,7 @@ export default createRule({
       return {
         sender: tsutils.isIntrinsicErrorType(senderType)
           ? 'error typed'
-          : '`any`',
+          : `\`${checker.typeToString(senderType)}\``,
       };
     }
 
@@ -401,7 +429,15 @@ export default createRule({
       },
       'ArrayExpression > SpreadElement'(node: TSESTree.SpreadElement): void {
         const restType = services.getTypeAtLocation(node.argument);
-        if (isTypeAnyType(restType) || isTypeAnyArrayType(restType, checker)) {
+        if (
+          // [...any] or [...any[]]
+          isTypeAnyType(restType) ||
+          isTypeAnyArrayType(restType, checker) ||
+          // [...never] or [...never[]]
+          (!allowUnsafeNever &&
+            (isTypeNeverType(restType) ||
+              isTypeNeverArrayType(restType, checker)))
+        ) {
           context.report({
             node,
             messageId: 'unsafeArraySpread',
