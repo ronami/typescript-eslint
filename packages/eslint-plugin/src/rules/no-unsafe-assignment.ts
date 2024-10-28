@@ -306,7 +306,6 @@ export default createRule<Options, MessageIds>({
       ) {
         if (
           isTypeNeverArrayType(senderType, checker) &&
-          isTypeNeverArrayType(receiverType, checker) &&
           !contextualReceiverType
         ) {
           context.report({
