@@ -310,6 +310,7 @@ export default createRule<Options, MessageIds>({
           }
 
           default: {
+            // `foo([])`
             if (
               argument.type === AST_NODE_TYPES.ArrayExpression &&
               argument.elements.length === 0

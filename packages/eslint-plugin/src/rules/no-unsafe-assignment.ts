@@ -299,6 +299,7 @@ export default createRule<Options, MessageIds>({
           : services.getTypeAtLocation(receiverNode);
       const senderType = services.getTypeAtLocation(senderNode);
 
+      // `const a: string[] = []`
       if (
         senderNode.type === AST_NODE_TYPES.ArrayExpression &&
         senderNode.elements.length === 0

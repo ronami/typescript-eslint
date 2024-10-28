@@ -144,6 +144,7 @@ export default createRule<Options, MessageIds>({
             return;
           }
 
+          // `const foo = (): string[] => [];`
           if (
             returnNode.type === AST_NODE_TYPES.ArrayExpression &&
             returnNode.elements.length === 0
@@ -199,6 +200,8 @@ export default createRule<Options, MessageIds>({
           ) {
             return;
           }
+          // `declare const bazz: (callback: () => string[]) => void;`
+          // `bazz(() => []);`
           if (
             returnNode.type === AST_NODE_TYPES.ArrayExpression &&
             returnNode.elements.length === 0 &&
