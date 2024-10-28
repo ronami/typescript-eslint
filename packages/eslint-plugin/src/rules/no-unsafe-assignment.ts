@@ -294,6 +294,7 @@ export default createRule({
         senderType,
         receiverType,
         checker,
+        false,
         senderNode,
       );
       if (!result) {

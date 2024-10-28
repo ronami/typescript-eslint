@@ -189,6 +189,7 @@ export default createRule({
           returnNodeType,
           functionReturnType,
           checker,
+          false,
           returnNode,
         );
         if (!result) {

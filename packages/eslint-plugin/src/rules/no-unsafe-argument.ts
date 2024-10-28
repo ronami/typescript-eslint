@@ -14,6 +14,12 @@ import {
   nullThrows,
 } from '../util';
 
+type Options = [
+  {
+    allowUnsafeNever: boolean;
+  },
+];
+
 type MessageIds =
   | 'unsafeArgument'
   | 'unsafeArraySpread'
@@ -141,7 +147,7 @@ class FunctionSignature {
   }
 }
 
-export default createRule<[], MessageIds>({
+export default createRule<Options, MessageIds>({
   name: 'no-unsafe-argument',
   meta: {
     type: 'problem',
@@ -158,10 +164,22 @@ export default createRule<[], MessageIds>({
       unsafeTupleSpread:
         'Unsafe spread of a tuple type. The argument is {{sender}} and is assigned to a parameter of type {{receiver}}.',
     },
-    schema: [],
+    schema: [
+      {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          allowUnsafeNever: {
+            type: 'boolean',
+            description:
+              'Allows the use of `never` in potentially unsafe contexts.',
+          },
+        },
+      },
+    ],
   },
-  defaultOptions: [],
-  create(context) {
+  defaultOptions: [{ allowUnsafeNever: true }],
+  create(context, [{ allowUnsafeNever }]) {
     const services = getParserServices(context);
     const checker = services.program.getTypeChecker();
 
@@ -255,6 +273,7 @@ export default createRule<[], MessageIds>({
                   tupleType,
                   parameterType,
                   checker,
+                  allowUnsafeNever,
                   // we can't pass the individual tuple members in here as this will most likely be a spread variable
                   // not a spread array
                   null,
@@ -296,6 +315,7 @@ export default createRule<[], MessageIds>({
               argumentType,
               parameterType,
               checker,
+              allowUnsafeNever,
               argument,
             );
             if (result) {
