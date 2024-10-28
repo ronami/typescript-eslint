@@ -235,6 +235,15 @@ export default createRule<Options, MessageIds>({
           }
         }
 
+        if (
+          allowUnsafeNever &&
+          (unsafeType === UnsafeType.Never ||
+            unsafeType === UnsafeType.NeverArray ||
+            unsafeType === UnsafeType.PromiseNever)
+        ) {
+          return;
+        }
+
         // If the function return type was not unknown/unknown[], mark usage as unsafeReturn.
         return context.report({
           node: reportingNode,
