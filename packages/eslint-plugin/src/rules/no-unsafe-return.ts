@@ -146,8 +146,7 @@ export default createRule<Options, MessageIds>({
 
           if (
             returnNode.type === AST_NODE_TYPES.ArrayExpression &&
-            returnNode.elements.length === 0 &&
-            !isTypeNeverArrayType(signatureReturnType, checker)
+            returnNode.elements.length === 0
           ) {
             return;
           }
@@ -197,6 +196,13 @@ export default createRule<Options, MessageIds>({
             (unsafeType === UnsafeType.PromiseAny ||
               unsafeType === UnsafeType.PromiseNever) &&
             isTypeUnknownType(awaitedType)
+          ) {
+            return;
+          }
+          if (
+            returnNode.type === AST_NODE_TYPES.ArrayExpression &&
+            returnNode.elements.length === 0 &&
+            !isTypeNeverArrayType(functionReturnType, checker)
           ) {
             return;
           }

@@ -289,18 +289,34 @@ export default createRule<Options, MessageIds>({
       comparisonType: ComparisonType,
     ): boolean {
       const receiverTsNode = services.esTreeNodeToTSNodeMap.get(receiverNode);
+      const contextualReceiverType = getContextualType(
+        checker,
+        receiverTsNode as ts.Expression,
+      );
       const receiverType =
         comparisonType === ComparisonType.Contextual
-          ? getContextualType(checker, receiverTsNode as ts.Expression) ??
-            services.getTypeAtLocation(receiverNode)
+          ? contextualReceiverType ?? services.getTypeAtLocation(receiverNode)
           : services.getTypeAtLocation(receiverNode);
       const senderType = services.getTypeAtLocation(senderNode);
 
       if (
         senderNode.type === AST_NODE_TYPES.ArrayExpression &&
-        senderNode.elements.length === 0 &&
-        !isTypeNeverArrayType(receiverType, checker)
+        senderNode.elements.length === 0
       ) {
+        if (
+          isTypeNeverArrayType(senderType, checker) &&
+          isTypeNeverArrayType(receiverType, checker) &&
+          !contextualReceiverType
+        ) {
+          context.report({
+            node: reportingNode,
+            messageId: 'anyAssignment',
+            data: createData(senderType),
+          });
+
+          return true;
+        }
+
         return false;
       }
 
