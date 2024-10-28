@@ -112,9 +112,14 @@ export default createRule<Options, MessageIds>({
       senderType: ts.Type,
       senderNode: ts.Node,
     ): boolean {
-      // any array
-      // const [x] = ([] as any[]);
-      if (isTypeAnyArrayType(senderType, checker)) {
+      if (
+        // any array
+        // const [x] = ([] as any[]);
+        isTypeAnyArrayType(senderType, checker) ||
+        // never array
+        // const [x] = ([] as never[]);
+        (!allowUnsafeNever && isTypeNeverArrayType(senderType, checker))
+      ) {
         context.report({
           node: receiverNode,
           messageId: 'unsafeArrayPattern',
@@ -152,8 +157,12 @@ export default createRule<Options, MessageIds>({
           continue;
         }
 
-        // check for the any type first so we can handle [[[x]]] = [any]
-        if (isTypeAnyType(senderType)) {
+        if (
+          // check for the any type first so we can handle [[[x]]] = [any]
+          isTypeAnyType(senderType) ||
+          // check for the any type first so we can handle [[[x]]] = [never]
+          (!allowUnsafeNever && isTypeNeverType(senderType))
+        ) {
           context.report({
             node: receiverElement,
             messageId: 'unsafeArrayPatternFromTuple',
@@ -240,7 +249,10 @@ export default createRule<Options, MessageIds>({
         }
 
         // check for the any type first so we can handle {x: {y: z}} = {x: any}
-        if (isTypeAnyType(senderType)) {
+        if (
+          isTypeAnyType(senderType) ||
+          (!allowUnsafeNever && isTypeNeverType(senderType))
+        ) {
           context.report({
             node: receiverProperty.value,
             messageId: 'unsafeArrayPatternFromTuple',
@@ -284,7 +296,10 @@ export default createRule<Options, MessageIds>({
           : services.getTypeAtLocation(receiverNode);
       const senderType = services.getTypeAtLocation(senderNode);
 
-      if (isTypeAnyType(senderType)) {
+      if (
+        isTypeAnyType(senderType) ||
+        (!allowUnsafeNever && isTypeNeverType(senderType))
+      ) {
         // handle cases when we assign any ==> unknown.
         if (isTypeUnknownType(receiverType)) {
           return false;
