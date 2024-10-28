@@ -297,6 +297,14 @@ export default createRule<Options, MessageIds>({
       const senderType = services.getTypeAtLocation(senderNode);
 
       if (
+        senderNode.type === AST_NODE_TYPES.ArrayExpression &&
+        senderNode.elements.length === 0 &&
+        !isTypeNeverArrayType(receiverType, checker)
+      ) {
+        return false;
+      }
+
+      if (
         isTypeAnyType(senderType) ||
         (!allowUnsafeNever && isTypeNeverType(senderType))
       ) {

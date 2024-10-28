@@ -12,6 +12,7 @@ import {
   getThisExpression,
   isTypeAnyType,
   isTypeFlagSet,
+  isTypeNeverArrayType,
   isTypeUnknownArrayType,
   isTypeUnknownType,
   isUnsafeAssignment,
@@ -142,6 +143,15 @@ export default createRule<Options, MessageIds>({
           ) {
             return;
           }
+
+          if (
+            returnNode.type === AST_NODE_TYPES.ArrayExpression &&
+            returnNode.elements.length === 0 &&
+            !isTypeNeverArrayType(signatureReturnType, checker)
+          ) {
+            return;
+          }
+
           if (functionNode.async) {
             const awaitedSignatureReturnType =
               checker.getAwaitedType(signatureReturnType);

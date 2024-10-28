@@ -310,6 +310,13 @@ export default createRule<Options, MessageIds>({
           }
 
           default: {
+            if (
+              argument.type === AST_NODE_TYPES.ArrayExpression &&
+              argument.elements.length === 0
+            ) {
+              continue;
+            }
+
             const parameterType = signature.getNextParameterType();
             if (parameterType == null) {
               continue;
