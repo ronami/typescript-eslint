@@ -283,7 +283,7 @@ foo(1 as ${type}, 1 as ${type});
             receiver: '`number`',
             sender: `\`${type}\``,
           },
-          endColumn: 17 + length * 2,
+          endColumn: 17 + (length * 2),
           line: 3,
           messageId: 'unsafeArgument',
         },
@@ -442,7 +442,7 @@ foo(1 as ${type}, 'a' as ${type}, 1 as ${type});
             receiver: '`string`',
             sender: `\`${type}\``,
           },
-          endColumn: 19 + length * 2,
+          endColumn: 19 + (length * 2),
           line: 3,
           messageId: 'unsafeArgument',
         },
@@ -471,7 +471,7 @@ foo('a', 1 as ${type}, 'a' as ${type}, 1 as ${type});
             receiver: '`string`',
             sender: `\`${type}\``,
           },
-          endColumn: 24 + length * 2,
+          endColumn: 24 + (length * 2),
           line: 3,
           messageId: 'unsafeArgument',
         },
@@ -681,6 +681,15 @@ bar([]);
     {
       code: `
 declare const bar: <T>(x: T[]) => void;
+
+bar([]);
+      `,
+      errors: [{ messageId: 'unsafeArgument' }],
+      options: allowUnsafeNeverFalseOptions,
+    },
+    {
+      code: `
+declare const bar: <T>(...x: T[]) => void;
 
 bar([]);
       `,
