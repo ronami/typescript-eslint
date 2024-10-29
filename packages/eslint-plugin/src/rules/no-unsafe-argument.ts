@@ -15,13 +15,13 @@ import {
   nullThrows,
 } from '../util';
 
-type Options = [
+export type Options = [
   {
     allowUnsafeNever: boolean;
   },
 ];
 
-type MessageIds =
+export type MessageIds =
   | 'unsafeArgument'
   | 'unsafeArraySpread'
   | 'unsafeSpread'
@@ -310,20 +310,34 @@ export default createRule<Options, MessageIds>({
           }
 
           default: {
-            // `foo([])`
-            if (
-              argument.type === AST_NODE_TYPES.ArrayExpression &&
-              argument.elements.length === 0
-            ) {
-              continue;
-            }
-
             const parameterType = signature.getNextParameterType();
             if (parameterType == null) {
               continue;
             }
 
             const argumentType = services.getTypeAtLocation(argument);
+
+            // `foo([])`
+            if (
+              argument.type === AST_NODE_TYPES.ArrayExpression &&
+              argument.elements.length === 0
+            ) {
+              if (isTypeNeverArrayType(parameterType, checker)) {
+                context.report({
+                  node: argument,
+                  messageId: 'unsafeArgument',
+                  data: {
+                    receiver: describeType(parameterType),
+                    sender: describeType(argumentType),
+                  },
+                });
+
+                continue;
+              }
+
+              continue;
+            }
+
             const result = isUnsafeAssignment(
               argumentType,
               parameterType,
