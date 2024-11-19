@@ -12,7 +12,18 @@ import {
   isUnsafeAssignment,
 } from '../util';
 
-export default createRule({
+type Options = [
+  {
+    allowUnsafeNever: boolean;
+  },
+];
+
+type MessageIds =
+  | 'unsafeOfAnyTypeAssertion'
+  | 'unsafeToAnyTypeAssertion'
+  | 'unsafeTypeAssertion';
+
+export default createRule<Options, MessageIds>({
   name: 'no-unsafe-type-assertion',
   meta: {
     type: 'problem',
@@ -28,10 +39,22 @@ export default createRule({
       unsafeTypeAssertion:
         "Unsafe type assertion: type '{{type}}' is more narrow than the original type.",
     },
-    schema: [],
+    schema: [
+      {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          allowUnsafeNever: {
+            type: 'boolean',
+            description:
+              'Allows the use of `never` in potentially unsafe contexts.',
+          },
+        },
+      },
+    ],
   },
-  defaultOptions: [],
-  create(context) {
+  defaultOptions: [{ allowUnsafeNever: true }],
+  create(context, [{ allowUnsafeNever }]) {
     const services = getParserServices(context);
     const checker = services.program.getTypeChecker();
 
@@ -79,6 +102,7 @@ export default createRule({
         expressionType,
         assertedType,
         checker,
+        allowUnsafeNever,
         node.expression,
       );
 
@@ -98,6 +122,7 @@ export default createRule({
         assertedType,
         expressionType,
         checker,
+        allowUnsafeNever,
         node.typeAnnotation,
       );
 
