@@ -248,9 +248,10 @@ export default createRule<Options, MessageIds>({
           continue;
         }
 
-        // check for the any type first so we can handle {x: {y: z}} = {x: any}
         if (
+          // check for the any type first so we can handle {x: {y: z}} = {x: any}
           isTypeAnyType(senderType) ||
+          // check for the any type first so we can handle {x: {y: z}} = {x: never}
           (!allowUnsafeNever && isTypeNeverType(senderType))
         ) {
           context.report({
