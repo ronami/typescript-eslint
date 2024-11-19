@@ -102,19 +102,6 @@ export default tseslint.config(
     },
     linterOptions: { reportUnusedDisableDirectives: 'error' },
     rules: {
-      '@typescript-eslint/no-unsafe-argument': [
-        'error',
-        { allowUnsafeNever: false },
-      ],
-      '@typescript-eslint/no-unsafe-assignment': [
-        'error',
-        { allowUnsafeNever: false },
-      ],
-      '@typescript-eslint/no-unsafe-return': [
-        'error',
-        { allowUnsafeNever: false },
-      ],
-
       //
       // our plugin :D
       //
