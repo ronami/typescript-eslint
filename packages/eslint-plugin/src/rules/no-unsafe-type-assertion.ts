@@ -59,7 +59,11 @@ export default createRule<Options, MessageIds>({
     const checker = services.program.getTypeChecker();
 
     function getAnyTypeName(type: ts.Type): string {
-      return tsutils.isIntrinsicErrorType(type) ? 'error typed' : '`any`';
+      return tsutils.isIntrinsicErrorType(type)
+        ? 'error typed'
+        : tsutils.isIntrinsicNeverType(type)
+          ? '`never`'
+          : '`any`';
     }
 
     function isObjectLiteralType(type: ts.Type): boolean {
