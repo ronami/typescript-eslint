@@ -47,7 +47,7 @@ export default createRule<Options, MessageIds>({
           allowUnsafeNever: {
             type: 'boolean',
             description:
-              'Allow type assertions that cast a value to the `never` type.',
+              'Allow type assertions that cast a value to type `never`.',
           },
         },
       },
