@@ -37,8 +37,7 @@ export default createRule<Options, MessageIds>({
   meta: {
     type: 'problem',
     docs: {
-      description:
-        'Disallow returning a value with type `any` or `never` from a function',
+      description: 'Disallow returning a value with type `any` from a function',
       recommended: 'recommended',
       requiresTypeChecking: true,
     },
@@ -59,7 +58,7 @@ export default createRule<Options, MessageIds>({
           allowUnsafeNever: {
             type: 'boolean',
             description:
-              'Allows the use of `never` in potentially unsafe contexts.',
+              'Allow returning a value with type `never` from a function.',
           },
         },
       },

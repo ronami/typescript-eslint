@@ -49,7 +49,7 @@ export default createRule<Options, MessageIds>({
     type: 'problem',
     docs: {
       description:
-        'Disallow assigning a value with type `any` or `never` to variables and properties',
+        'Disallow assigning a value with type `any` to variables and properties',
       recommended: 'recommended',
       requiresTypeChecking: true,
     },
@@ -75,7 +75,7 @@ export default createRule<Options, MessageIds>({
           allowUnsafeNever: {
             type: 'boolean',
             description:
-              'Allows the use of `never` in potentially unsafe contexts.',
+              'Allow assigning a value with type `never` to variables and properties.',
           },
         },
       },

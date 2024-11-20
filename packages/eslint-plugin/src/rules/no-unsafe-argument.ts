@@ -173,7 +173,7 @@ export default createRule<Options, MessageIds>({
           allowUnsafeNever: {
             type: 'boolean',
             description:
-              'Allows the use of `never` in potentially unsafe contexts.',
+              'Allow calling a function with a value with type `never`.',
           },
         },
       },
