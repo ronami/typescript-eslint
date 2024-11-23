@@ -128,22 +128,57 @@ export default createRule({
       param: TSESTree.ArrayPattern,
       typeAnnotation: TSESTree.TSTupleType,
     ): void {
+      let restTypesCount = 0;
+
       for (const [index, member] of typeAnnotation.elementTypes.entries()) {
-        // bail on rest type `[...string[]]`
         if (member.type === AST_NODE_TYPES.TSRestType) {
-          return;
+          const property = param.elements.at(index - restTypesCount);
+
+          restTypesCount++;
+
+          if (property === undefined) {
+            reportOnMember(member, { type: 'key', key: String(index) });
+            continue;
+          }
+
+          // skip in case of `[,]`
+          if (property == null) {
+            if (param.elements.findLastIndex(x => x) > index) {
+              continue;
+            }
+
+            reportOnMember(member, { type: 'key', key: String(index) });
+            continue;
+          }
+
+          if (
+            // bail on a rest element
+            property.type === AST_NODE_TYPES.RestElement
+          ) {
+            return;
+          }
+
+          continue;
         }
 
-        const property = param.elements.at(index);
+        const property = param.elements.at(index - restTypesCount);
 
         if (property === undefined) {
           reportOnMember(member, { type: 'key', key: String(index) });
           continue;
         }
 
+        // skip in case of `[,]`
+        if (property == null) {
+          if (param.elements.findLastIndex(x => x) > index - restTypesCount) {
+            continue;
+          }
+
+          reportOnMember(member, { type: 'key', key: String(index) });
+          continue;
+        }
+
         if (
-          // bail in case of `[, ...]`
-          property == null ||
           // bail on a rest element
           property.type === AST_NODE_TYPES.RestElement
         ) {

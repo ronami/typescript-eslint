@@ -682,4 +682,10 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    files: ['packages/test-project/src/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-partial-destructuring': 'error',
+    },
+  },
 );

@@ -7,6 +7,14 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Launch Program",
+      "program": "${workspaceRoot}/node_modules/eslint/bin/eslint.js",
+      "args": ["src/index.ts"],
+      "cwd": "${workspaceFolder}/packages/test-project/",
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Jest Test Current eslint-plugin Rule",
       "cwd": "${workspaceFolder}/packages/eslint-plugin/",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
