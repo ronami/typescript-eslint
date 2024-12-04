@@ -1,15 +1,14 @@
-/* eslint-disable no-useless-computed-key */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-declare const d: 0 | 3;
+declare const d: 0 | 1;
 
 function test1({
   // '-2': b,
-  ['0']: { a },
-  // [d]: c,
+  // ['0']: a,
+  [d]: c,
 }: [
   //
-  // boolean,
+  boolean,
   { a: number },
   // ...string[],
   // string,
