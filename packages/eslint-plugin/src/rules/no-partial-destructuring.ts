@@ -203,52 +203,39 @@ export default createRule({
         remainingProperties.set(Number(memberKey), { property });
       }
 
-      // let restTypesCount = 0;
-
-      // const members = [...typeAnnotation.elementTypes.entries()].sort(
-      //   ([, node1]) => (node1.type === AST_NODE_TYPES.TSRestType ? -1 : 1),
-      // );
-
       const restTypeElements: TSESTree.TSRestType[] = [];
 
-      for (const [index, member] of typeAnnotation.elementTypes.entries()) {
+      for (const [
+        memberIndex,
+        member,
+      ] of typeAnnotation.elementTypes.entries()) {
         // `...string[]`
         if (member.type === AST_NODE_TYPES.TSRestType) {
           restTypeElements.push(member);
           continue;
         }
 
-        const remainingProperty = remainingProperties.get(index);
+        const remainingProperty = remainingProperties.get(memberIndex);
 
         if (remainingProperty) {
-          remainingProperties.delete(index);
-          checkParam(remainingProperty.property.value, member);
+          remainingProperties.delete(memberIndex);
 
+          checkParam(remainingProperty.property.value, member);
           continue;
         }
 
-        // // check if this is used by a dynamic index type
-        // const dynamicProperty = getDynamicKeyForMember(
-        //   member,
-        //   memberKey,
-        //   dynamicProperties,
-        // );
+        // check if this is used by a dynamic index type
+        const dynamicProperty = getDynamicIndexForMember(
+          memberIndex,
+          dynamicProperties,
+        );
 
-        // if (dynamicProperty) {
-        //   if (
-        //     member.type === AST_NODE_TYPES.TSPropertySignature &&
-        //     member.typeAnnotation
-        //   ) {
-        //     checkParam(
-        //       dynamicProperty.value,
-        //       member.typeAnnotation.typeAnnotation,
-        //     );
-        //   }
+        if (dynamicProperty) {
+          checkParam(dynamicProperty.value, member);
+          continue;
+        }
 
-        //   continue;
-        // }
-
-        reportOnMember(member, { type: 'key', key: String(index) });
+        reportOnMember(member, { type: 'key', key: String(memberIndex) });
       }
 
       // for (const element of restTypeElements) {
@@ -358,6 +345,26 @@ export default createRule({
         type: 'property',
         key: String(memberKey),
       });
+    }
+
+    function getDynamicIndexForMember(
+      memberKey: number | string | symbol,
+      dynamicProperties: DynamicProperties,
+    ): TSESTree.Property | undefined {
+      for (const destructure of dynamicProperties) {
+        destructure.type ??= getConstrainedTypeAtLocation(
+          services,
+          destructure.property.key,
+        );
+
+        for (const type of tsutils.unionTypeParts(destructure.type)) {
+          if (tsutils.isLiteralType(type) && type.value === memberKey) {
+            return destructure.property;
+          }
+        }
+      }
+
+      return undefined;
     }
 
     /**
