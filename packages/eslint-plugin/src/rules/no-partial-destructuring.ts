@@ -200,19 +200,23 @@ export default createRule({
           continue;
         }
 
-        remainingProperties.set(memberKey, { property });
+        remainingProperties.set(Number(memberKey), { property });
       }
-
-      // console.log([...dynamicProperties]);
-      // console.log(remainingProperties);
 
       // let restTypesCount = 0;
 
+      // const members = [...typeAnnotation.elementTypes.entries()].sort(
+      //   ([, node1]) => (node1.type === AST_NODE_TYPES.TSRestType ? -1 : 1),
+      // );
+
+      const restTypeElements: TSESTree.TSRestType[] = [];
+
       for (const [index, member] of typeAnnotation.elementTypes.entries()) {
-        // // `...string[]`
-        // if (member.type === AST_NODE_TYPES.TSRestType) {
-        //   restTypesCount++;
-        // }
+        // `...string[]`
+        if (member.type === AST_NODE_TYPES.TSRestType) {
+          restTypeElements.push(member);
+          continue;
+        }
 
         const remainingProperty = remainingProperties.get(index);
 
@@ -223,8 +227,37 @@ export default createRule({
           continue;
         }
 
+        // // check if this is used by a dynamic index type
+        // const dynamicProperty = getDynamicKeyForMember(
+        //   member,
+        //   memberKey,
+        //   dynamicProperties,
+        // );
+
+        // if (dynamicProperty) {
+        //   if (
+        //     member.type === AST_NODE_TYPES.TSPropertySignature &&
+        //     member.typeAnnotation
+        //   ) {
+        //     checkParam(
+        //       dynamicProperty.value,
+        //       member.typeAnnotation.typeAnnotation,
+        //     );
+        //   }
+
+        //   continue;
+        // }
+
         reportOnMember(member, { type: 'key', key: String(index) });
       }
+
+      // for (const element of restTypeElements) {
+      //   //
+      //   if (remainingProperties.size > 0) {
+      //     continue;
+      //   }
+
+      // }
     }
 
     /**
