@@ -131,37 +131,12 @@ export default createRule({
       let restTypesCount = 0;
 
       for (const [index, member] of typeAnnotation.elementTypes.entries()) {
-        if (member.type === AST_NODE_TYPES.TSRestType) {
-          const property = param.elements.at(index - restTypesCount);
-
-          restTypesCount++;
-
-          if (property === undefined) {
-            reportOnMember(member, { type: 'key', key: String(index) });
-            continue;
-          }
-
-          // skip in case of `[,]`
-          if (property == null) {
-            if (param.elements.findLastIndex(x => x) > index) {
-              continue;
-            }
-
-            reportOnMember(member, { type: 'key', key: String(index) });
-            continue;
-          }
-
-          if (
-            // bail on a rest element
-            property.type === AST_NODE_TYPES.RestElement
-          ) {
-            return;
-          }
-
-          continue;
-        }
-
         const property = param.elements.at(index - restTypesCount);
+
+        // `...string[]`
+        if (member.type === AST_NODE_TYPES.TSRestType) {
+          restTypesCount++;
+        }
 
         if (property === undefined) {
           reportOnMember(member, { type: 'key', key: String(index) });
