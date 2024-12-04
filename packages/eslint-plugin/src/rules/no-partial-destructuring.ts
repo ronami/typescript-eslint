@@ -72,6 +72,13 @@ export default createRule({
         return checkTuple(param, paramType);
       }
 
+      if (
+        param.type === AST_NODE_TYPES.ObjectPattern &&
+        paramType.type === AST_NODE_TYPES.TSTupleType
+      ) {
+        return checkObjectTuple(param, paramType);
+      }
+
       // do nothing otherwise
     }
 
@@ -161,6 +168,62 @@ export default createRule({
         }
 
         checkParam(property, member);
+      }
+    }
+
+    function checkObjectTuple(
+      node: TSESTree.ObjectPattern,
+      typeAnnotation: TSESTree.TSTupleType,
+    ): void {
+      const remainingProperties: RemainingProperties = new Map();
+      const dynamicProperties: DynamicProperties = new Set();
+
+      // collect used properties
+      for (const property of node.properties) {
+        // bail on a rest element
+        if (property.type === AST_NODE_TYPES.RestElement) {
+          return;
+        }
+
+        const valueType = services.getTypeAtLocation(property.value);
+
+        // bail if misses; this is a type-error
+        if (tsutils.isIntrinsicErrorType(valueType)) {
+          return;
+        }
+
+        const memberKey = getStaticMemberAccessValue(property, context);
+
+        // collect dynamic keys which we failed to statically analyzed
+        if (memberKey === undefined) {
+          dynamicProperties.add({ property });
+          continue;
+        }
+
+        remainingProperties.set(memberKey, { property });
+      }
+
+      // console.log([...dynamicProperties]);
+      // console.log(remainingProperties);
+
+      // let restTypesCount = 0;
+
+      for (const [index, member] of typeAnnotation.elementTypes.entries()) {
+        // // `...string[]`
+        // if (member.type === AST_NODE_TYPES.TSRestType) {
+        //   restTypesCount++;
+        // }
+
+        const remainingProperty = remainingProperties.get(index);
+
+        if (remainingProperty) {
+          remainingProperties.delete(index);
+          checkParam(remainingProperty.property.value, member);
+
+          continue;
+        }
+
+        reportOnMember(member, { type: 'key', key: String(index) });
       }
     }
 
@@ -437,6 +500,11 @@ export default createRule({
         node: TSESTree.ArrayPattern & TypeAnnotationOf<TSESTree.TSTupleType>,
       ): void {
         checkTuple(node, node.typeAnnotation.typeAnnotation);
+      },
+      "ObjectPattern[typeAnnotation.typeAnnotation.type='TSTupleType']"(
+        node: TSESTree.ObjectPattern & TypeAnnotationOf<TSESTree.TSTupleType>,
+      ): void {
+        checkObjectTuple(node, node.typeAnnotation.typeAnnotation);
       },
       "ObjectPattern[typeAnnotation.typeAnnotation.type='TSTypeLiteral']"(
         node: TSESTree.ObjectPattern & TypeAnnotationOf<TSESTree.TSTypeLiteral>,
