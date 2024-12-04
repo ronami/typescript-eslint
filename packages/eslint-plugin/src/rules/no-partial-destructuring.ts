@@ -205,20 +205,17 @@ export default createRule({
 
       const restTypeElements: TSESTree.TSRestType[] = [];
 
-      for (const [
-        memberIndex,
-        member,
-      ] of typeAnnotation.elementTypes.entries()) {
+      for (const [index, member] of typeAnnotation.elementTypes.entries()) {
         // `...string[]`
         if (member.type === AST_NODE_TYPES.TSRestType) {
           restTypeElements.push(member);
           continue;
         }
 
-        const remainingProperty = remainingProperties.get(memberIndex);
+        const remainingProperty = remainingProperties.get(index);
 
         if (remainingProperty) {
-          remainingProperties.delete(memberIndex);
+          remainingProperties.delete(index);
 
           checkParam(remainingProperty.property.value, member);
           continue;
@@ -226,7 +223,7 @@ export default createRule({
 
         // check if this is used by a dynamic index type
         const dynamicProperty = getDynamicIndexForMember(
-          memberIndex,
+          index,
           dynamicProperties,
         );
 
@@ -235,15 +232,15 @@ export default createRule({
           continue;
         }
 
-        reportOnMember(member, { type: 'key', key: String(memberIndex) });
+        reportOnMember(member, { type: 'key', key: String(index) });
       }
 
       // for (const element of restTypeElements) {
-      //   //
       //   if (remainingProperties.size > 0) {
       //     continue;
       //   }
 
+      //   const matchingDynamicProperty = [...dynamicProperties].find((destructure) => {});
       // }
     }
 
@@ -361,8 +358,30 @@ export default createRule({
           if (tsutils.isLiteralType(type) && type.value === memberKey) {
             return destructure.property;
           }
+
+          if (tsutils.isIntrinsicNumberType(type)) {
+            return destructure.property;
+          }
         }
       }
+
+      // // compare types for computed type keys
+      // if (member.computed) {
+      //   const memberKeyType = services.getTypeAtLocation(member.key);
+
+      //   for (const destructure of dynamicProperties) {
+      //     destructure.type ??= getConstrainedTypeAtLocation(
+      //       services,
+      //       destructure.property.key,
+      //     );
+
+      //     for (const type of tsutils.unionTypeParts(destructure.type)) {
+      //       if (checker.isTypeAssignableTo(type, memberKeyType)) {
+      //         return destructure.property;
+      //       }
+      //     }
+      //   }
+      // }
 
       return undefined;
     }

@@ -10,7 +10,7 @@ function test1({
   //
   boolean,
   { a: number },
-  // ...string[],
+  ...string[],
   // string,
   // boolean,
   // number,
