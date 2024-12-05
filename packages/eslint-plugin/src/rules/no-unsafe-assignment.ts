@@ -305,19 +305,6 @@ export default createRule<Options, MessageIds>({
         senderNode.type === AST_NODE_TYPES.ArrayExpression &&
         senderNode.elements.length === 0
       ) {
-        if (
-          isTypeNeverArrayType(senderType, checker) &&
-          !contextualReceiverType
-        ) {
-          context.report({
-            node: reportingNode,
-            messageId: 'anyAssignment',
-            data: createData(senderType),
-          });
-
-          return true;
-        }
-
         return false;
       }
 
