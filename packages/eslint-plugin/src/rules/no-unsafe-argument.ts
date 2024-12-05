@@ -322,19 +322,6 @@ export default createRule<Options, MessageIds>({
               argument.type === AST_NODE_TYPES.ArrayExpression &&
               argument.elements.length === 0
             ) {
-              if (isTypeNeverArrayType(parameterType, checker)) {
-                context.report({
-                  node: argument,
-                  messageId: 'unsafeArgument',
-                  data: {
-                    receiver: describeType(parameterType),
-                    sender: describeType(argumentType),
-                  },
-                });
-
-                continue;
-              }
-
               continue;
             }
 
