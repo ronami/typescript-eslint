@@ -13,7 +13,6 @@ import {
   getThisExpression,
   isTypeAnyType,
   isTypeFlagSet,
-  isTypeNeverArrayType,
   isTypeUnknownArrayType,
   isTypeUnknownType,
   isUnsafeAssignment,
@@ -204,8 +203,7 @@ export default createRule<Options, MessageIds>({
           // `bazz(() => []);`
           if (
             returnNode.type === AST_NODE_TYPES.ArrayExpression &&
-            returnNode.elements.length === 0 &&
-            !isTypeNeverArrayType(functionReturnType, checker)
+            returnNode.elements.length === 0
           ) {
             return;
           }
