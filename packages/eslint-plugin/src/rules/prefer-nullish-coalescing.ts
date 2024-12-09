@@ -343,10 +343,6 @@ export default createRule<Options, MessageIds>({
           }
         }
 
-        if (!operator) {
-          return;
-        }
-
         let identifier: TSESTree.Node | undefined;
         let hasUndefinedCheck = false;
         let hasNullCheck = false;
@@ -369,6 +365,25 @@ export default createRule<Options, MessageIds>({
             identifier = testNode;
           } else {
             return;
+          }
+        }
+
+        // treat no operator as a truthy check (essentially contains both null and undefined)
+        if (!operator) {
+          if (isNodeEqual(node.test, node.consequent)) {
+            identifier = node.test;
+            hasNullCheck = true;
+            hasUndefinedCheck = true;
+            operator = '!=';
+          } else if (
+            node.test.type === AST_NODE_TYPES.UnaryExpression &&
+            node.test.operator === '!' &&
+            isNodeEqual(node.test.argument, node.alternate)
+          ) {
+            identifier = node.test.argument;
+            hasNullCheck = true;
+            hasUndefinedCheck = true;
+            operator = '==';
           }
         }
 
