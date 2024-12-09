@@ -241,9 +241,59 @@ export default createRule<Options, MessageIds>({
       });
     }
 
+    function foo(node: TSESTree.ConditionalExpression): void {
+      let testNode: TSESTree.Expression | undefined;
+      let negate: boolean | undefined = undefined;
+
+      if (isNodeEqual(node.test, node.consequent)) {
+        testNode = node.test;
+        negate = false;
+      } else if (
+        node.test.type === AST_NODE_TYPES.UnaryExpression &&
+        node.test.operator === '!' &&
+        isNodeEqual(node.test.argument, node.alternate)
+      ) {
+        testNode = node.test.argument;
+        negate = true;
+      }
+
+      if (!testNode) {
+        return;
+      }
+
+      if (!checkConditionalExpression(node, testNode)) {
+        return;
+      }
+
+      context.report({
+        node,
+        messageId: 'preferNullishOverTernary',
+        // TODO: also account for = in the ternary clause
+        data: { equals: '' },
+        suggest: [
+          {
+            messageId: 'suggestNullish',
+            data: { equals: '' },
+            fix(fixer: TSESLint.RuleFixer): TSESLint.RuleFix {
+              const [left, right] = negate
+                ? [node.alternate, node.consequent]
+                : [node.consequent, node.alternate];
+              return fixer.replaceText(
+                node,
+                `${getTextWithParentheses(context.sourceCode, left)} ?? ${getTextWithParentheses(
+                  context.sourceCode,
+                  right,
+                )}`,
+              );
+            },
+          },
+        ],
+      });
+    }
+
     function checkConditionalExpression(
       node: TSESTree.Expression,
-      identifierNode: TSESTree.Expression,
+      identifierNode: TSESTree.Node,
     ): boolean {
       const tsNode = parserServices.esTreeNodeToTSNodeMap.get(identifierNode);
       const type = checker.getTypeAtLocation(tsNode);
@@ -283,12 +333,6 @@ export default createRule<Options, MessageIds>({
       /* eslint-enable @typescript-eslint/no-non-null-assertion */
 
       return true;
-
-      // context.report({
-      //   node,
-      //   messageId: 'preferNullishOverOr',
-      //   data: { description, equals },
-      // });
     }
 
     return {
@@ -361,21 +405,22 @@ export default createRule<Options, MessageIds>({
         }
 
         if (!operator) {
-          if (isNodeEqual(node.test, node.consequent)) {
-            // checkConditionalExpression(node, node.test, false, 'or', '');
-          } else if (
-            node.test.type === AST_NODE_TYPES.UnaryExpression &&
-            node.test.operator === '!' &&
-            isNodeEqual(node.test.argument, node.alternate)
-          ) {
-            // checkConditionalExpression(
-            //   node,
-            //   node.test.argument,
-            //   true,
-            //   'or',
-            //   '',
-            // );
-          }
+          foo(node);
+          // if (isNodeEqual(node.test, node.consequent)) {
+          //   // checkConditionalExpression(node, node.test, false, 'or', '');
+          // } else if (
+          //   node.test.type === AST_NODE_TYPES.UnaryExpression &&
+          //   node.test.operator === '!' &&
+          //   isNodeEqual(node.test.argument, node.alternate)
+          // ) {
+          //   // checkConditionalExpression(
+          //   //   node,
+          //   //   node.test.argument,
+          //   //   true,
+          //   //   'or',
+          //   //   '',
+          //   // );
+          // }
           return;
         }
 
