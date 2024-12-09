@@ -274,6 +274,80 @@ export default createRule<Options, MessageIds>({
       });
     }
 
+    function checkConditionalExpression(
+      node: TSESTree.ConditionalExpression,
+      conditionNode: TSESTree.Expression,
+      negate: boolean,
+      description: string,
+      equals: string,
+    ): void {
+      const tsNode = parserServices.esTreeNodeToTSNodeMap.get(conditionNode);
+      const type = checker.getTypeAtLocation(tsNode);
+      if (!isTypeFlagSet(type, ts.TypeFlags.Null | ts.TypeFlags.Undefined)) {
+        return;
+      }
+
+      if (ignoreConditionalTests === true && isConditionalTest(node)) {
+        return;
+      }
+
+      // https://github.com/typescript-eslint/typescript-eslint/issues/5439
+      /* eslint-disable @typescript-eslint/no-non-null-assertion */
+      const ignorableFlags = [
+        (ignorePrimitives === true || ignorePrimitives!.bigint) &&
+          ts.TypeFlags.BigIntLike,
+        (ignorePrimitives === true || ignorePrimitives!.boolean) &&
+          ts.TypeFlags.BooleanLike,
+        (ignorePrimitives === true || ignorePrimitives!.number) &&
+          ts.TypeFlags.NumberLike,
+        (ignorePrimitives === true || ignorePrimitives!.string) &&
+          ts.TypeFlags.StringLike,
+      ]
+        .filter((flag): flag is number => typeof flag === 'number')
+        .reduce((previous, flag) => previous | flag, 0);
+      if (
+        type.flags !== ts.TypeFlags.Null &&
+        type.flags !== ts.TypeFlags.Undefined &&
+        (type as ts.UnionOrIntersectionType).types.some(t =>
+          tsutils
+            .intersectionTypeParts(t)
+            .some(t => tsutils.isTypeFlagSet(t, ignorableFlags)),
+        )
+      ) {
+        return;
+      }
+      /* eslint-enable @typescript-eslint/no-non-null-assertion */
+
+      function* fix(
+        fixer: TSESLint.RuleFixer,
+      ): IterableIterator<TSESLint.RuleFix> {
+        const [left, right] = negate
+          ? [node.alternate, node.consequent]
+          : [node.consequent, node.alternate];
+
+        yield fixer.replaceText(
+          node,
+          `${getTextWithParentheses(context.sourceCode, left)} ?? ${getTextWithParentheses(
+            context.sourceCode,
+            right,
+          )}`,
+        );
+      }
+
+      context.report({
+        node,
+        messageId: 'preferNullishOverOr',
+        data: { description, equals },
+        suggest: [
+          {
+            messageId: 'suggestNullish',
+            data: { equals },
+            fix,
+          },
+        ],
+      });
+    }
+
     return {
       'AssignmentExpression[operator = "||="]'(
         node: TSESTree.AssignmentExpression,
@@ -343,6 +417,25 @@ export default createRule<Options, MessageIds>({
           }
         }
 
+        if (!operator) {
+          if (isNodeEqual(node.test, node.consequent)) {
+            checkConditionalExpression(node, node.test, false, 'or', '');
+          } else if (
+            node.test.type === AST_NODE_TYPES.UnaryExpression &&
+            node.test.operator === '!' &&
+            isNodeEqual(node.test.argument, node.alternate)
+          ) {
+            checkConditionalExpression(
+              node,
+              node.test.argument,
+              true,
+              'or',
+              '',
+            );
+          }
+          return;
+        }
+
         let identifier: TSESTree.Node | undefined;
         let hasUndefinedCheck = false;
         let hasNullCheck = false;
@@ -365,25 +458,6 @@ export default createRule<Options, MessageIds>({
             identifier = testNode;
           } else {
             return;
-          }
-        }
-
-        // treat no operator as a truthy check (essentially contains both null and undefined)
-        if (!operator) {
-          if (isNodeEqual(node.test, node.consequent)) {
-            identifier = node.test;
-            hasNullCheck = true;
-            hasUndefinedCheck = true;
-            operator = '!=';
-          } else if (
-            node.test.type === AST_NODE_TYPES.UnaryExpression &&
-            node.test.operator === '!' &&
-            isNodeEqual(node.test.argument, node.alternate)
-          ) {
-            identifier = node.test.argument;
-            hasNullCheck = true;
-            hasUndefinedCheck = true;
-            operator = '==';
           }
         }
 

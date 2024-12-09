@@ -3,6 +3,12 @@ import type { TSESTree } from '@typescript-eslint/utils';
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 
 export function isNodeEqual(a: TSESTree.Node, b: TSESTree.Node): boolean {
+  if (
+    a.type === AST_NODE_TYPES.ChainExpression &&
+    b.type === AST_NODE_TYPES.MemberExpression
+  ) {
+    return isNodeEqual(a.expression, b);
+  }
   if (a.type !== b.type) {
     return false;
   }
