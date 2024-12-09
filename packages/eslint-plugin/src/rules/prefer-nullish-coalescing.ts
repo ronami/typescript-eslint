@@ -185,16 +185,6 @@ export default createRule<Options, MessageIds>({
       description: string,
       equals: string,
     ): void {
-      const tsNode = parserServices.esTreeNodeToTSNodeMap.get(node);
-      const type = checker.getTypeAtLocation(tsNode.left);
-      if (!isTypeFlagSet(type, ts.TypeFlags.Null | ts.TypeFlags.Undefined)) {
-        return;
-      }
-
-      if (ignoreConditionalTests === true && isConditionalTest(node)) {
-        return;
-      }
-
       if (
         ignoreMixedLogicalExpressions === true &&
         isMixedLogicalExpression(node)
@@ -202,32 +192,9 @@ export default createRule<Options, MessageIds>({
         return;
       }
 
-      // https://github.com/typescript-eslint/typescript-eslint/issues/5439
-      /* eslint-disable @typescript-eslint/no-non-null-assertion */
-      const ignorableFlags = [
-        (ignorePrimitives === true || ignorePrimitives!.bigint) &&
-          ts.TypeFlags.BigIntLike,
-        (ignorePrimitives === true || ignorePrimitives!.boolean) &&
-          ts.TypeFlags.BooleanLike,
-        (ignorePrimitives === true || ignorePrimitives!.number) &&
-          ts.TypeFlags.NumberLike,
-        (ignorePrimitives === true || ignorePrimitives!.string) &&
-          ts.TypeFlags.StringLike,
-      ]
-        .filter((flag): flag is number => typeof flag === 'number')
-        .reduce((previous, flag) => previous | flag, 0);
-      if (
-        type.flags !== ts.TypeFlags.Null &&
-        type.flags !== ts.TypeFlags.Undefined &&
-        (type as ts.UnionOrIntersectionType).types.some(t =>
-          tsutils
-            .intersectionTypeParts(t)
-            .some(t => tsutils.isTypeFlagSet(t, ignorableFlags)),
-        )
-      ) {
+      if (!checkConditionalExpression(node, node.left)) {
         return;
       }
-      /* eslint-enable @typescript-eslint/no-non-null-assertion */
 
       const barBarOperator = nullThrows(
         context.sourceCode.getTokenAfter(
@@ -275,20 +242,17 @@ export default createRule<Options, MessageIds>({
     }
 
     function checkConditionalExpression(
-      node: TSESTree.ConditionalExpression,
-      conditionNode: TSESTree.Expression,
-      negate: boolean,
-      description: string,
-      equals: string,
-    ): void {
-      const tsNode = parserServices.esTreeNodeToTSNodeMap.get(conditionNode);
+      node: TSESTree.Expression,
+      identifierNode: TSESTree.Expression,
+    ): boolean {
+      const tsNode = parserServices.esTreeNodeToTSNodeMap.get(identifierNode);
       const type = checker.getTypeAtLocation(tsNode);
       if (!isTypeFlagSet(type, ts.TypeFlags.Null | ts.TypeFlags.Undefined)) {
-        return;
+        return false;
       }
 
       if (ignoreConditionalTests === true && isConditionalTest(node)) {
-        return;
+        return false;
       }
 
       // https://github.com/typescript-eslint/typescript-eslint/issues/5439
@@ -314,38 +278,17 @@ export default createRule<Options, MessageIds>({
             .some(t => tsutils.isTypeFlagSet(t, ignorableFlags)),
         )
       ) {
-        return;
+        return false;
       }
       /* eslint-enable @typescript-eslint/no-non-null-assertion */
 
-      function* fix(
-        fixer: TSESLint.RuleFixer,
-      ): IterableIterator<TSESLint.RuleFix> {
-        const [left, right] = negate
-          ? [node.alternate, node.consequent]
-          : [node.consequent, node.alternate];
+      return true;
 
-        yield fixer.replaceText(
-          node,
-          `${getTextWithParentheses(context.sourceCode, left)} ?? ${getTextWithParentheses(
-            context.sourceCode,
-            right,
-          )}`,
-        );
-      }
-
-      context.report({
-        node,
-        messageId: 'preferNullishOverOr',
-        data: { description, equals },
-        suggest: [
-          {
-            messageId: 'suggestNullish',
-            data: { equals },
-            fix,
-          },
-        ],
-      });
+      // context.report({
+      //   node,
+      //   messageId: 'preferNullishOverOr',
+      //   data: { description, equals },
+      // });
     }
 
     return {
@@ -419,19 +362,19 @@ export default createRule<Options, MessageIds>({
 
         if (!operator) {
           if (isNodeEqual(node.test, node.consequent)) {
-            checkConditionalExpression(node, node.test, false, 'or', '');
+            // checkConditionalExpression(node, node.test, false, 'or', '');
           } else if (
             node.test.type === AST_NODE_TYPES.UnaryExpression &&
             node.test.operator === '!' &&
             isNodeEqual(node.test.argument, node.alternate)
           ) {
-            checkConditionalExpression(
-              node,
-              node.test.argument,
-              true,
-              'or',
-              '',
-            );
+            // checkConditionalExpression(
+            //   node,
+            //   node.test.argument,
+            //   true,
+            //   'or',
+            //   '',
+            // );
           }
           return;
         }
