@@ -274,9 +274,9 @@ export default createRule<Options, MessageIds>({
 
     function shouldReportOnTruthyExpression(
       node: TSESTree.Expression,
-      identifierNode: TSESTree.Node,
+      testNode: TSESTree.Node,
     ): boolean {
-      const tsNode = parserServices.esTreeNodeToTSNodeMap.get(identifierNode);
+      const tsNode = parserServices.esTreeNodeToTSNodeMap.get(testNode);
       const type = checker.getTypeAtLocation(tsNode);
       if (!isTypeFlagSet(type, ts.TypeFlags.Null | ts.TypeFlags.Undefined)) {
         return false;
