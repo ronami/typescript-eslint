@@ -386,9 +386,12 @@ export default createRule<Options, MessageIds>({
         }
 
         if (!operator) {
+          // a ? a : b
           if (isNodeEqual(node.test, node.consequent)) {
             checkTruthyConditionalExpression(node, node.test, node.alternate);
-          } else if (
+          }
+          // !a ? b : a
+          else if (
             node.test.type === AST_NODE_TYPES.UnaryExpression &&
             node.test.operator === '!' &&
             isNodeEqual(node.test.argument, node.alternate)
