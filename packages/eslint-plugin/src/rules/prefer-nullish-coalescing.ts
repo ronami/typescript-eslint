@@ -606,11 +606,29 @@ function isBuiltInBooleanCall(
   return false;
 }
 
+function breakNode(
+  node:
+    | TSESTree.AssignmentExpression
+    | TSESTree.ConditionalExpression
+    | TSESTree.LogicalExpression,
+): TSESTree.Node[] {
+  switch (node.type) {
+    case AST_NODE_TYPES.AssignmentExpression:
+    case AST_NODE_TYPES.LogicalExpression:
+      return [node.parent, node.left, node.right];
+    case AST_NODE_TYPES.ConditionalExpression:
+      return [node.test, node.alternate, node.consequent];
+  }
+}
+
 function isMixedLogicalExpression(
-  node: TSESTree.AssignmentExpression | TSESTree.LogicalExpression,
+  node:
+    | TSESTree.AssignmentExpression
+    | TSESTree.ConditionalExpression
+    | TSESTree.LogicalExpression,
 ): boolean {
   const seen = new Set<TSESTree.Node | undefined>();
-  const queue = [node.parent, node.left, node.right];
+  const queue = breakNode(node);
   for (const current of queue) {
     if (seen.has(current)) {
       continue;
