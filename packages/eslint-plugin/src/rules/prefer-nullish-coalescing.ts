@@ -192,7 +192,7 @@ export default createRule<Options, MessageIds>({
         return;
       }
 
-      if (!checkConditionalExpression(node, node.left)) {
+      if (!shouldReportOnTruthyExpression(node, node.left)) {
         return;
       }
 
@@ -241,27 +241,12 @@ export default createRule<Options, MessageIds>({
       });
     }
 
-    function foo(node: TSESTree.ConditionalExpression): void {
-      let testNode: TSESTree.Expression | undefined;
-      let negate: boolean | undefined = undefined;
-
-      if (isNodeEqual(node.test, node.consequent)) {
-        testNode = node.test;
-        negate = false;
-      } else if (
-        node.test.type === AST_NODE_TYPES.UnaryExpression &&
-        node.test.operator === '!' &&
-        isNodeEqual(node.test.argument, node.alternate)
-      ) {
-        testNode = node.test.argument;
-        negate = true;
-      }
-
-      if (!testNode) {
-        return;
-      }
-
-      if (!checkConditionalExpression(node, testNode)) {
+    function checkTruthyConditionalExpression(
+      node: TSESTree.ConditionalExpression,
+      left: TSESTree.Expression,
+      right: TSESTree.Expression,
+    ): void {
+      if (!shouldReportOnTruthyExpression(node, left)) {
         return;
       }
 
@@ -274,9 +259,6 @@ export default createRule<Options, MessageIds>({
             messageId: 'suggestNullish',
             data: { equals: '' },
             fix(fixer: TSESLint.RuleFixer): TSESLint.RuleFix {
-              const [left, right] = negate
-                ? [node.alternate, node.consequent]
-                : [node.consequent, node.alternate];
               return fixer.replaceText(
                 node,
                 `${getTextWithParentheses(context.sourceCode, left)} ?? ${getTextWithParentheses(
@@ -290,7 +272,7 @@ export default createRule<Options, MessageIds>({
       });
     }
 
-    function checkConditionalExpression(
+    function shouldReportOnTruthyExpression(
       node: TSESTree.Expression,
       identifierNode: TSESTree.Node,
     ): boolean {
@@ -404,22 +386,19 @@ export default createRule<Options, MessageIds>({
         }
 
         if (!operator) {
-          foo(node);
-          // if (isNodeEqual(node.test, node.consequent)) {
-          //   // checkConditionalExpression(node, node.test, false, 'or', '');
-          // } else if (
-          //   node.test.type === AST_NODE_TYPES.UnaryExpression &&
-          //   node.test.operator === '!' &&
-          //   isNodeEqual(node.test.argument, node.alternate)
-          // ) {
-          //   // checkConditionalExpression(
-          //   //   node,
-          //   //   node.test.argument,
-          //   //   true,
-          //   //   'or',
-          //   //   '',
-          //   // );
-          // }
+          if (isNodeEqual(node.test, node.consequent)) {
+            checkTruthyConditionalExpression(node, node.test, node.alternate);
+          } else if (
+            node.test.type === AST_NODE_TYPES.UnaryExpression &&
+            node.test.operator === '!' &&
+            isNodeEqual(node.test.argument, node.alternate)
+          ) {
+            checkTruthyConditionalExpression(
+              node,
+              node.test.argument,
+              node.consequent,
+            );
+          }
           return;
         }
 
