@@ -268,7 +268,6 @@ export default createRule<Options, MessageIds>({
       context.report({
         node,
         messageId: 'preferNullishOverTernary',
-        // TODO: also account for = in the ternary clause
         data: { equals: '' },
         suggest: [
           {
