@@ -185,13 +185,6 @@ export default createRule<Options, MessageIds>({
       description: string,
       equals: string,
     ): void {
-      if (
-        ignoreMixedLogicalExpressions === true &&
-        isMixedLogicalExpression(node)
-      ) {
-        return;
-      }
-
       if (!shouldReportOnTruthyExpression(node, node.left)) {
         return;
       }
@@ -273,7 +266,10 @@ export default createRule<Options, MessageIds>({
     }
 
     function shouldReportOnTruthyExpression(
-      node: TSESTree.Expression,
+      node:
+        | TSESTree.AssignmentExpression
+        | TSESTree.ConditionalExpression
+        | TSESTree.LogicalExpression,
       testNode: TSESTree.Node,
     ): boolean {
       const tsNode = parserServices.esTreeNodeToTSNodeMap.get(testNode);
@@ -283,6 +279,13 @@ export default createRule<Options, MessageIds>({
       }
 
       if (ignoreConditionalTests === true && isConditionalTest(node)) {
+        return false;
+      }
+
+      if (
+        ignoreMixedLogicalExpressions === true &&
+        isMixedLogicalExpression(node)
+      ) {
         return false;
       }
 
