@@ -243,10 +243,10 @@ export default createRule<Options, MessageIds>({
 
     function checkTruthyConditionalExpression(
       node: TSESTree.ConditionalExpression,
-      left: TSESTree.Expression,
-      right: TSESTree.Expression,
+      testNode: TSESTree.Expression,
+      fallbackNode: TSESTree.Expression,
     ): void {
-      if (!shouldReportOnTruthyExpression(node, left)) {
+      if (!shouldReportOnTruthyExpression(node, testNode)) {
         return;
       }
 
@@ -261,9 +261,9 @@ export default createRule<Options, MessageIds>({
             fix(fixer: TSESLint.RuleFixer): TSESLint.RuleFix {
               return fixer.replaceText(
                 node,
-                `${getTextWithParentheses(context.sourceCode, left)} ?? ${getTextWithParentheses(
+                `${getTextWithParentheses(context.sourceCode, testNode)} ?? ${getTextWithParentheses(
                   context.sourceCode,
-                  right,
+                  fallbackNode,
                 )}`,
               );
             },
