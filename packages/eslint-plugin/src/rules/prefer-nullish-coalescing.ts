@@ -252,12 +252,19 @@ export default createRule<Options, MessageIds>({
             messageId: 'suggestNullish',
             data: { equals: '' },
             fix(fixer: TSESLint.RuleFixer): TSESLint.RuleFix {
+              const fallbackNodeText = getTextWithParentheses(
+                context.sourceCode,
+                fallbackNode,
+              );
+
+              const fallbackNodeFix =
+                fallbackNode.type === AST_NODE_TYPES.LogicalExpression
+                  ? `(${fallbackNodeText})`
+                  : fallbackNodeText;
+
               return fixer.replaceText(
                 node,
-                `${getTextWithParentheses(context.sourceCode, testNode)} ?? ${getTextWithParentheses(
-                  context.sourceCode,
-                  fallbackNode,
-                )}`,
+                `${getTextWithParentheses(context.sourceCode, testNode)} ?? ${fallbackNodeFix}`,
               );
             },
           },
