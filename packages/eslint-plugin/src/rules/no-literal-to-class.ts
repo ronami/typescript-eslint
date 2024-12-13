@@ -37,8 +37,8 @@ export default createRule({
     },
     fixable: 'code',
     messages: {
-      noLiteralToClass:
-        'Object literal assignment to class type is not allowed. Use the class constructor instead.',
+      objectToClassAssignment:
+        "Assignment to class type '{{type}}' must be instantiated using the class constructor.",
     },
     schema: [],
   },
@@ -55,7 +55,10 @@ export default createRule({
       if (isLiteralToClassAssignment(actualType, expectedType, checker, node)) {
         context.report({
           node,
-          messageId: 'noLiteralToClass',
+          messageId: 'objectToClassAssignment',
+          data: {
+            type: checker.typeToString(expectedType),
+          },
         });
       }
     }

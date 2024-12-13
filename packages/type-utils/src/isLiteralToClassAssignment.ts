@@ -25,14 +25,6 @@ function isLiteralToClassAssignmentWorker(
   senderNode: TSESTree.Node | null,
   visited: Map<ts.Type, Set<ts.Type>>,
 ): boolean {
-  console.log({
-    isClassType: isTypeClass(receiver),
-    isObjectAnonymousType: isObjectAnonymousType(type),
-    isObjectLiteralType: isObjectLiteralType(type),
-    receiver: checker.typeToString(receiver),
-    type: checker.typeToString(type),
-  });
-
   if (isTypeClass(receiver) && isObjectAnonymousType(type)) {
     return checker.isTypeAssignableTo(type, receiver);
   }
