@@ -5,38 +5,45 @@ class Point {
   ) {}
 }
 
-export const point: Promise<Point> = Promise.resolve(new Point(-1, -2));
+// export const point: Promise<Point> = Promise.resolve(new Point(-1, -2));
 
-declare const a: { point: boolean | Point };
+// declare const a: { point: boolean | Point };
 
-a.point = { x: -1, y: -2 };
+// const _p1: Point = { x: -1, y: -2 };
+// const _p2: Point = new Point(1, 2);
 
-export function foo(): boolean;
-export function foo(_?: boolean | Point): Point[];
-export function foo(_?: boolean | Point): boolean | (boolean | Point)[] {
-  if (!_) {
-    return true;
-  }
+declare const f: (x: { point: Point }) => void;
 
-  return [true, false, { x: -1, y: -2 }];
-}
+f({ point: { x: -1, y: -2 } });
 
-declare const callback: (callback: () => Point) => void;
+// a.point = { x: -1, y: -2 };
 
-callback(() => {
-  return { x: -1, y: -2 };
-});
+// export function foo(): boolean;
+// export function foo(_?: boolean | Point): Point[];
+// export function foo(_?: boolean | Point): boolean | (boolean | Point)[] {
+//   if (!_) {
+//     return true;
+//   }
 
-foo({ x: -1, y: -2 });
+//   return [true, false, { x: -1, y: -2 }];
+// }
 
-const m = new Map<string, { a: number; b: number } | Point>();
+// declare const callback: (callback: () => Point) => void;
 
-m.set('', { a: -1, b: -2 });
+// callback(() => {
+//   return { x: -1, y: -2 };
+// });
 
-export async function bar(): Promise<Point> {
-  return { x: -1, y: -2 };
-}
+// foo({ x: -1, y: -2 });
 
-const s = new Set<{ p: Point }>();
+// const m = new Map<string, { a: number; b: number } | Point>();
 
-s.add({ p: { x: 1, y: 2 } });
+// m.set('', { a: -1, b: -2 });
+
+// export async function bar(): Promise<Point> {
+//   return { x: -1, y: -2 };
+// }
+
+// const s = new Set<{ p: Point }>();
+
+// s.add({ p: { x: 1, y: 2 } });

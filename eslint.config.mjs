@@ -102,7 +102,7 @@ export default tseslint.config(
     },
     linterOptions: { reportUnusedDisableDirectives: 'error' },
     rules: {
-      '@typescript-eslint/no-literal-to-class': 'error',
+      '@typescript-eslint/no-object-assignment-to-class-type': 'error',
 
       //
       // our plugin :D
