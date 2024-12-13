@@ -1,9 +1,9 @@
 import type { TSESTree } from '@typescript-eslint/utils';
 import type { RuleListener } from '@typescript-eslint/utils/ts-eslint';
+import type * as ts from 'typescript';
 
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 import * as tsutils from 'ts-api-utils';
-import * as ts from 'typescript';
 
 import {
   createRule,
@@ -17,6 +17,7 @@ import {
   NullThrowsReasons,
 } from '../util';
 import { ComparisonType, getComparisonType } from '../util/getComparisonType';
+import { getContextualFunctionType } from '../util/getContextualFunctionType';
 import { getParentFunctionNode } from '../util/getParentFunctionNode';
 
 export default createRule({
@@ -136,21 +137,7 @@ export default createRule({
 
       // function has an explicit return type, so ensure it's a safe return
       const returnNodeType = getConstrainedTypeAtLocation(services, returnNode);
-      const functionTSNode = services.esTreeNodeToTSNodeMap.get(functionNode);
-
-      // function expressions will not have their return type modified based on receiver typing
-      // so we have to use the contextual typing in these cases, i.e.
-      // const foo1: () => Set<string> = () => new Set<any>();
-      // the return type of the arrow function is Set<any> even though the variable is typed as Set<string>
-      let functionType =
-        ts.isFunctionExpression(functionTSNode) ||
-        ts.isArrowFunction(functionTSNode)
-          ? getContextualType(checker, functionTSNode)
-          : services.getTypeAtLocation(functionNode);
-
-      if (!functionType) {
-        functionType = services.getTypeAtLocation(functionNode);
-      }
+      const functionType = getContextualFunctionType(services, functionNode);
 
       const callSignatures = tsutils.getCallSignaturesOfType(functionType);
 

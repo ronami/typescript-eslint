@@ -8,7 +8,6 @@ import {
   createRule,
   discriminateAnyType,
   getConstrainedTypeAtLocation,
-  getContextualType,
   getParserServices,
   getThisExpression,
   isTypeAnyType,
@@ -17,6 +16,7 @@ import {
   isTypeUnknownType,
   isUnsafeAssignment,
 } from '../util';
+import { getContextualFunctionType } from '../util/getContextualFunctionType';
 import { getParentFunctionNode } from '../util/getParentFunctionNode';
 
 export default createRule({
@@ -71,18 +71,8 @@ export default createRule({
       const returnNodeType = getConstrainedTypeAtLocation(services, returnNode);
       const functionTSNode = services.esTreeNodeToTSNodeMap.get(functionNode);
 
-      // function expressions will not have their return type modified based on receiver typing
-      // so we have to use the contextual typing in these cases, i.e.
-      // const foo1: () => Set<string> = () => new Set<any>();
-      // the return type of the arrow function is Set<any> even though the variable is typed as Set<string>
-      let functionType =
-        ts.isFunctionExpression(functionTSNode) ||
-        ts.isArrowFunction(functionTSNode)
-          ? getContextualType(checker, functionTSNode)
-          : services.getTypeAtLocation(functionNode);
-      if (!functionType) {
-        functionType = services.getTypeAtLocation(functionNode);
-      }
+      const functionType = getContextualFunctionType(services, functionNode);
+
       const callSignatures = tsutils.getCallSignaturesOfType(functionType);
       // If there is an explicit type annotation *and* that type matches the actual
       // function return type, we shouldn't complain (it's intentional, even if unsafe)
