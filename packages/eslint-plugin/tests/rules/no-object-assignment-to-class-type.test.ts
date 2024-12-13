@@ -37,6 +37,42 @@ function foo(): Point {
   return { x: -1, y: -2 } as Point;
 }
     `,
+    `
+class Point {
+  constructor(
+    public x: number,
+    public y: number,
+  ) {}
+}
+
+function foo(): Point | { a: number; b: number } {
+  return { a: -1, b: -2 };
+}
+    `,
+    `
+class Point {
+  constructor(
+    public x: number,
+    public y: number,
+  ) {}
+}
+
+function foo(): Point | { a: number; b: number } {
+  return new Point(1, 2);
+}
+    `,
+    `
+class Point {
+  constructor(
+    public x: number,
+    public y: number,
+  ) {}
+}
+
+function foo(): Point[] {
+  return [new Point(1, 2)];
+}
+    `,
   ],
   invalid: [
     {
@@ -72,6 +108,72 @@ class Point {
 
 function foo(): Point | boolean {
   return { x: -1, y: -2 };
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: 'Point' },
+          line: 10,
+          messageId: 'objectToClassAssignment',
+        },
+      ],
+    },
+    {
+      code: `
+class Point {
+  constructor(
+    public x: number,
+    public y: number,
+  ) {}
+}
+
+async function foo(): Promise<Point> {
+  return { x: -1, y: -2 };
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: 'Point' },
+          line: 10,
+          messageId: 'objectToClassAssignment',
+        },
+      ],
+    },
+    {
+      code: `
+class Point {
+  constructor(
+    public x: number,
+    public y: number,
+  ) {}
+}
+
+function foo(): Promise<Point> {
+  return Promise.resolve({ x: -1, y: -2 });
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: 'Point' },
+          line: 10,
+          messageId: 'objectToClassAssignment',
+        },
+      ],
+    },
+    {
+      code: `
+class Point {
+  constructor(
+    public x: number,
+    public y: number,
+  ) {}
+}
+
+function foo(): Point[] {
+  return [{ x: -1, y: -2 }];
 }
       `,
       errors: [
