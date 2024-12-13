@@ -95,7 +95,6 @@ export default createRule({
         return;
       }
 
-      // ignore any-typed calls as these are caught by no-unsafe-call
       if (isTypeAnyType(services.getTypeAtLocation(callee))) {
         return;
       }
@@ -142,7 +141,6 @@ export default createRule({
         return;
       }
 
-      // function has an explicit return type, so ensure it's a safe return
       const returnNodeType = getConstrainedTypeAtLocation(services, returnNode);
       const functionType = getContextualFunctionType(services, functionNode);
 
