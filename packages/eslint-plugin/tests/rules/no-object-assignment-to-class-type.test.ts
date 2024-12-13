@@ -20,6 +20,23 @@ function foo() {
   return;
 }
     `,
+    `
+function foo() {
+  return { x: -1, y: -2 };
+}
+    `,
+    `
+class Point {
+  constructor(
+    public x: number,
+    public y: number,
+  ) {}
+}
+
+function foo(): Point {
+  return { x: -1, y: -2 } as Point;
+}
+    `,
   ],
   invalid: [
     {
@@ -32,6 +49,28 @@ class Point {
 }
 
 function foo(): Point {
+  return { x: -1, y: -2 };
+}
+      `,
+      errors: [
+        {
+          column: 3,
+          data: { type: 'Point' },
+          line: 10,
+          messageId: 'objectToClassAssignment',
+        },
+      ],
+    },
+    {
+      code: `
+class Point {
+  constructor(
+    public x: number,
+    public y: number,
+  ) {}
+}
+
+function foo(): Point | boolean {
   return { x: -1, y: -2 };
 }
       `,

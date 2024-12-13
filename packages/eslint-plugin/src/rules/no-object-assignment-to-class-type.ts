@@ -46,12 +46,19 @@ export default createRule({
       expectedType: ts.Type,
       actualType: ts.Type,
     ): void {
-      if (isLiteralToClassAssignment(actualType, expectedType, checker, node)) {
+      const unsafe = isLiteralToClassAssignment(
+        actualType,
+        expectedType,
+        checker,
+        node,
+      );
+
+      if (unsafe) {
         context.report({
           node,
           messageId: 'objectToClassAssignment',
           data: {
-            type: checker.typeToString(expectedType),
+            type: checker.typeToString(unsafe.receiver),
           },
         });
       }

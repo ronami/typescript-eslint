@@ -8,7 +8,7 @@ export function isLiteralToClassAssignment(
   receiver: ts.Type,
   checker: ts.TypeChecker,
   senderNode: TSESTree.Node | null,
-): boolean {
+): { receiver: ts.Type; sender: ts.Type } | false {
   return isLiteralToClassAssignmentWorker(
     type,
     receiver,
@@ -24,9 +24,16 @@ function isLiteralToClassAssignmentWorker(
   checker: ts.TypeChecker,
   senderNode: TSESTree.Node | null,
   visited: Map<ts.Type, Set<ts.Type>>,
-): boolean {
+): { receiver: ts.Type; sender: ts.Type } | false {
   if (isTypeClass(receiver) && isObjectAnonymousType(type)) {
-    return checker.isTypeAssignableTo(type, receiver);
+    if (checker.isTypeAssignableTo(type, receiver)) {
+      return {
+        receiver,
+        sender: type,
+      };
+    }
+
+    return false;
   }
 
   if (tsutils.isUnionType(type)) {
@@ -40,7 +47,7 @@ function isLiteralToClassAssignmentWorker(
       );
 
       if (unsafe) {
-        return true;
+        return unsafe;
       }
     }
 
@@ -58,7 +65,7 @@ function isLiteralToClassAssignmentWorker(
       );
 
       if (unsafe) {
-        return true;
+        return unsafe;
       }
     }
 
@@ -110,8 +117,9 @@ function isLiteralToClassAssignmentWorker(
         senderNode,
         visited,
       );
+
       if (unsafe) {
-        return true;
+        return unsafe;
       }
     }
 
