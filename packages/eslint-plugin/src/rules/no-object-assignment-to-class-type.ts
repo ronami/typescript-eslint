@@ -1,4 +1,5 @@
 import type { TSESTree } from '@typescript-eslint/utils';
+import type { RuleListener } from '@typescript-eslint/utils/ts-eslint';
 
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 import * as tsutils from 'ts-api-utils';
@@ -165,7 +166,7 @@ export default createRule({
       }
     }
 
-    return {
+    const assignmentChecks: RuleListener = {
       'AssignmentExpression[operator = "="], AssignmentPattern'(
         node: TSESTree.AssignmentExpression | TSESTree.AssignmentPattern,
       ): void {
@@ -176,32 +177,6 @@ export default createRule({
           // the variable already has some form of a type to compare against
           ComparisonType.Basic,
         );
-      },
-      'CallExpression, NewExpression'(
-        node: TSESTree.CallExpression | TSESTree.NewExpression,
-      ): void {
-        checkUnsafeArguments(node.arguments, node.callee, node);
-      },
-      // object pattern props are checked via assignments
-      ':not(ObjectPattern) > Property'(node: TSESTree.Property): void {
-        if (
-          node.value.type === AST_NODE_TYPES.AssignmentPattern ||
-          node.value.type === AST_NODE_TYPES.TSEmptyBodyFunctionExpression
-        ) {
-          // handled by other selector
-          return;
-        }
-
-        checkAssignment(node.key, node.value, node, ComparisonType.Contextual);
-      },
-      'ArrowFunctionExpression > :not(BlockStatement).body': checkReturn,
-      ReturnStatement(node): void {
-        const argument = node.argument;
-        if (!argument) {
-          return;
-        }
-
-        checkReturn(argument, node);
       },
       'VariableDeclarator[init != null]'(
         node: TSESTree.VariableDeclarator,
@@ -218,6 +193,47 @@ export default createRule({
           getComparisonType(node.id.typeAnnotation),
         );
       },
+      // object pattern props are checked via assignments
+      ':not(ObjectPattern) > Property'(node: TSESTree.Property): void {
+        if (
+          node.value.type === AST_NODE_TYPES.AssignmentPattern ||
+          node.value.type === AST_NODE_TYPES.TSEmptyBodyFunctionExpression
+        ) {
+          // handled by other selector
+          return;
+        }
+
+        checkAssignment(node.key, node.value, node, ComparisonType.Contextual);
+      },
+    };
+
+    const returnChecks: RuleListener = {
+      'ArrowFunctionExpression > :not(BlockStatement).body': checkReturn,
+      ReturnStatement(node): void {
+        const argument = node.argument;
+        if (!argument) {
+          return;
+        }
+
+        checkReturn(argument, node);
+      },
+    };
+
+    const argumentChecks: RuleListener = {
+      'CallExpression, NewExpression'(
+        node: TSESTree.CallExpression | TSESTree.NewExpression,
+      ): void {
+        checkUnsafeArguments(node.arguments, node.callee, node);
+      },
+      TaggedTemplateExpression(node: TSESTree.TaggedTemplateExpression): void {
+        checkUnsafeArguments(node.quasi.expressions, node.tag, node);
+      },
+    };
+
+    return {
+      ...argumentChecks,
+      ...assignmentChecks,
+      ...returnChecks,
     };
   },
 });
