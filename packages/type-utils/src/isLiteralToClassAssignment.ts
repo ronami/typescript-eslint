@@ -134,10 +134,3 @@ function isObjectAnonymousType(type: ts.Type): boolean {
     tsutils.isObjectFlagSet(type, ts.ObjectFlags.Anonymous)
   );
 }
-
-function isObjectLiteralType(type: ts.Type): boolean {
-  return (
-    tsutils.isObjectType(type) &&
-    tsutils.isObjectFlagSet(type, ts.ObjectFlags.ObjectLiteral)
-  );
-}

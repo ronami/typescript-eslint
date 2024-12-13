@@ -27,7 +27,7 @@ const enum ComparisonType {
 }
 
 export default createRule({
-  name: 'no-literal-to-class',
+  name: 'no-object-assignment-to-class-type',
   meta: {
     type: 'suggestion',
     docs: {

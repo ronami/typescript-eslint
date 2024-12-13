@@ -47,7 +47,6 @@ import noImportTypeSideEffects from './no-import-type-side-effects';
 import noInferrableTypes from './no-inferrable-types';
 import noInvalidThis from './no-invalid-this';
 import noInvalidVoidType from './no-invalid-void-type';
-import noLiteralToClass from './no-literal-to-class';
 import noLoopFunc from './no-loop-func';
 import noLossOfPrecision from './no-loss-of-precision';
 import noMagicNumbers from './no-magic-numbers';
@@ -59,6 +58,7 @@ import noNamespace from './no-namespace';
 import noNonNullAssertedNullishCoalescing from './no-non-null-asserted-nullish-coalescing';
 import noNonNullAssertedOptionalChain from './no-non-null-asserted-optional-chain';
 import noNonNullAssertion from './no-non-null-assertion';
+import noObjectAssignmentToClassType from './no-object-assignment-to-class-type';
 import noRedeclare from './no-redeclare';
 import noRedundantTypeConstituents from './no-redundant-type-constituents';
 import noRequireImports from './no-require-imports';
@@ -179,7 +179,6 @@ const rules = {
   'no-inferrable-types': noInferrableTypes,
   'no-invalid-this': noInvalidThis,
   'no-invalid-void-type': noInvalidVoidType,
-  'no-literal-to-class': noLiteralToClass,
   'no-loop-func': noLoopFunc,
   'no-loss-of-precision': noLossOfPrecision,
   'no-magic-numbers': noMagicNumbers,
@@ -191,6 +190,7 @@ const rules = {
   'no-non-null-asserted-nullish-coalescing': noNonNullAssertedNullishCoalescing,
   'no-non-null-asserted-optional-chain': noNonNullAssertedOptionalChain,
   'no-non-null-assertion': noNonNullAssertion,
+  'no-object-assignment-to-class-type': noObjectAssignmentToClassType,
   'no-redeclare': noRedeclare,
   'no-redundant-type-constituents': noRedundantTypeConstituents,
   'no-require-imports': noRequireImports,
