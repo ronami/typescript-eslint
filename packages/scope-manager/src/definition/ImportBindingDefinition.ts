@@ -5,13 +5,16 @@ import { DefinitionType } from './DefinitionType';
 
 class ImportBindingDefinition extends DefinitionBase<
   DefinitionType.ImportBinding,
-  | TSESTree.ImportSpecifier
   | TSESTree.ImportDefaultSpecifier
   | TSESTree.ImportNamespaceSpecifier
+  | TSESTree.ImportSpecifier
   | TSESTree.TSImportEqualsDeclaration,
   TSESTree.ImportDeclaration | TSESTree.TSImportEqualsDeclaration,
   TSESTree.Identifier
 > {
+  public readonly isTypeDefinition = true;
+  public readonly isVariableDefinition = true;
+
   constructor(
     name: TSESTree.Identifier,
     node: TSESTree.TSImportEqualsDeclaration,
@@ -32,9 +35,6 @@ class ImportBindingDefinition extends DefinitionBase<
   ) {
     super(DefinitionType.ImportBinding, name, node, decl);
   }
-
-  public readonly isTypeDefinition = true;
-  public readonly isVariableDefinition = true;
 }
 
 export { ImportBindingDefinition };

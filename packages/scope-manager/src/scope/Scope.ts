@@ -20,8 +20,8 @@ import type { WithScope } from './WithScope';
 type Scope =
   | BlockScope
   | CatchScope
-  | ClassScope
   | ClassFieldInitializerScope
+  | ClassScope
   | ClassStaticBlockScope
   | ConditionalTypeScope
   | ForScope
@@ -37,4 +37,4 @@ type Scope =
   | TypeScope
   | WithScope;
 
-export { Scope };
+export type { Scope };

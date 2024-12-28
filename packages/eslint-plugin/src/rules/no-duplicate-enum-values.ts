@@ -1,15 +1,16 @@
 import type { TSESTree } from '@typescript-eslint/utils';
+
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 
-import * as util from '../util';
+import { createRule } from '../util';
 
-export default util.createRule({
+export default createRule({
   name: 'no-duplicate-enum-values',
   meta: {
     type: 'problem',
     docs: {
       description: 'Disallow duplicate enum member values',
-      recommended: 'strict',
+      recommended: 'recommended',
     },
     hasSuggestions: false,
     messages: {
@@ -37,22 +38,22 @@ export default util.createRule({
 
     return {
       TSEnumDeclaration(node: TSESTree.TSEnumDeclaration): void {
-        const enumMembers = node.members;
+        const enumMembers = node.body.members;
         const seenValues = new Set<number | string>();
 
         enumMembers.forEach(member => {
-          if (member.initializer === undefined) {
+          if (member.initializer == null) {
             return;
           }
 
-          let value: string | number | undefined;
+          let value: number | string | undefined;
           if (isStringLiteral(member.initializer)) {
             value = String(member.initializer.value);
           } else if (isNumberLiteral(member.initializer)) {
             value = Number(member.initializer.value);
           }
 
-          if (value === undefined) {
+          if (value == null) {
             return;
           }
 

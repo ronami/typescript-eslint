@@ -1,7 +1,8 @@
 import type { TSESTree } from '@typescript-eslint/utils';
+
 import { AST_NODE_TYPES, AST_TOKEN_TYPES } from '@typescript-eslint/utils';
 
-import * as util from '../util';
+import { createRule } from '../util';
 
 type Options = [
   {
@@ -12,14 +13,14 @@ type Options = [
 ];
 type MessageIds = 'tripleSlashReference';
 
-export default util.createRule<Options, MessageIds>({
+export default createRule<Options, MessageIds>({
   name: 'triple-slash-reference',
   meta: {
     type: 'suggestion',
     docs: {
       description:
         'Disallow certain triple slash directives in favor of ES6-style import declarations',
-      recommended: 'error',
+      recommended: 'recommended',
     },
     messages: {
       tripleSlashReference:
@@ -28,18 +29,27 @@ export default util.createRule<Options, MessageIds>({
     schema: [
       {
         type: 'object',
+        additionalProperties: false,
         properties: {
           lib: {
+            type: 'string',
+            description:
+              'What to enforce for `/// <reference lib="..." />` references.',
             enum: ['always', 'never'],
           },
           path: {
+            type: 'string',
+            description:
+              'What to enforce for `/// <reference path="..." />` references.',
             enum: ['always', 'never'],
           },
           types: {
+            type: 'string',
+            description:
+              'What to enforce for `/// <reference types="..." />` references.',
             enum: ['always', 'never', 'prefer-import'],
           },
         },
-        additionalProperties: false,
       },
     ],
   },
@@ -51,8 +61,8 @@ export default util.createRule<Options, MessageIds>({
     },
   ],
   create(context, [{ lib, path, types }]) {
-    let programNode: TSESTree.Node;
-    const sourceCode = context.getSourceCode();
+    let programNode: TSESTree.Node | undefined;
+
     const references: {
       comment: TSESTree.Comment;
       importName: string;
@@ -77,15 +87,6 @@ export default util.createRule<Options, MessageIds>({
           hasMatchingReference(node.source);
         }
       },
-      TSImportEqualsDeclaration(node): void {
-        if (programNode) {
-          const reference = node.moduleReference;
-
-          if (reference.type === AST_NODE_TYPES.TSExternalModuleReference) {
-            hasMatchingReference(reference.expression as TSESTree.Literal);
-          }
-        }
-      },
       Program(node): void {
         if (lib === 'always' && path === 'always' && types === 'always') {
           return;
@@ -93,7 +94,8 @@ export default util.createRule<Options, MessageIds>({
         programNode = node;
         const referenceRegExp =
           /^\/\s*<reference\s*(types|path|lib)\s*=\s*["|'](.*)["|']/;
-        const commentsBefore = sourceCode.getCommentsBefore(programNode);
+        const commentsBefore =
+          context.sourceCode.getCommentsBefore(programNode);
 
         commentsBefore.forEach(comment => {
           if (comment.type !== AST_TOKEN_TYPES.Line) {
@@ -121,6 +123,15 @@ export default util.createRule<Options, MessageIds>({
             }
           }
         });
+      },
+      TSImportEqualsDeclaration(node): void {
+        if (programNode) {
+          const reference = node.moduleReference;
+
+          if (reference.type === AST_NODE_TYPES.TSExternalModuleReference) {
+            hasMatchingReference(reference.expression as TSESTree.Literal);
+          }
+        }
       },
     };
   },

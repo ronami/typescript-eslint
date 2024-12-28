@@ -1,13 +1,16 @@
+import { RuleTester } from '@typescript-eslint/rule-tester';
+
 import rule from '../../src/rules/no-mixed-enums';
-import { getFixturesRootDir, RuleTester } from '../RuleTester';
+import { getFixturesRootDir } from '../RuleTester';
 
 const rootDir = getFixturesRootDir();
 const ruleTester = new RuleTester({
-  parserOptions: {
-    tsconfigRootDir: rootDir,
-    project: './tsconfig.json',
+  languageOptions: {
+    parserOptions: {
+      project: './tsconfig.json',
+      tsconfigRootDir: rootDir,
+    },
   },
-  parser: '@typescript-eslint/parser',
 });
 
 ruleTester.run('no-mixed-enums', rule, {
@@ -189,19 +192,19 @@ enum Foo {
 }
     `,
     `
-import { AST_NODE_TYPES } from '@typescript-eslint/types';
+import { Enum } from './mixed-enums-decl';
 
-declare module '@typescript-eslint/types' {
-  enum AST_NODE_TYPES {
+declare module './mixed-enums-decl' {
+  enum Enum {
     StringLike = 'StringLike',
   }
 }
     `,
     `
-import { TSESTree } from '@typescript-eslint/types';
+import { Enum } from "module-that-does't-exist";
 
-declare module '@typescript-eslint/types' {
-  enum TSESTree {
+declare module "module-that-doesn't-exist" {
+  enum Enum {
     StringLike = 'StringLike',
   }
 }
@@ -261,8 +264,8 @@ namespace Different {
       `,
       errors: [
         {
-          endColumn: 28,
           column: 20,
+          endColumn: 28,
           line: 4,
           messageId: 'mixed',
         },
@@ -278,8 +281,8 @@ namespace Different {
       `,
       errors: [
         {
-          endColumn: 28,
           column: 20,
+          endColumn: 28,
           line: 4,
           messageId: 'mixed',
         },
@@ -295,8 +298,8 @@ namespace Different {
       `,
       errors: [
         {
-          endColumn: 28,
           column: 20,
+          endColumn: 28,
           line: 5,
           messageId: 'mixed',
         },
@@ -311,8 +314,8 @@ namespace Different {
       `,
       errors: [
         {
-          endColumn: 28,
           column: 20,
+          endColumn: 28,
           line: 4,
           messageId: 'mixed',
         },
@@ -328,8 +331,8 @@ namespace Different {
       `,
       errors: [
         {
-          endColumn: 28,
           column: 20,
+          endColumn: 28,
           line: 5,
           messageId: 'mixed',
         },
@@ -345,8 +348,8 @@ namespace Different {
       `,
       errors: [
         {
-          endColumn: 30,
           column: 20,
+          endColumn: 30,
           line: 5,
           messageId: 'mixed',
         },
@@ -362,8 +365,8 @@ namespace Different {
       `,
       errors: [
         {
-          endColumn: 21,
           column: 20,
+          endColumn: 21,
           line: 5,
           messageId: 'mixed',
         },
@@ -382,8 +385,8 @@ namespace Different {
       `,
       errors: [
         {
-          endColumn: 18,
           column: 15,
+          endColumn: 18,
           line: 8,
           messageId: 'mixed',
         },
@@ -402,8 +405,8 @@ namespace Different {
       `,
       errors: [
         {
-          endColumn: 16,
           column: 15,
+          endColumn: 16,
           line: 8,
           messageId: 'mixed',
         },
@@ -420,8 +423,8 @@ namespace Different {
       `,
       errors: [
         {
-          endColumn: 18,
           column: 15,
+          endColumn: 18,
           line: 6,
           messageId: 'mixed',
         },
@@ -438,8 +441,8 @@ namespace Different {
       `,
       errors: [
         {
-          endColumn: 18,
           column: 15,
+          endColumn: 18,
           line: 6,
           messageId: 'mixed',
         },
@@ -456,8 +459,8 @@ namespace Different {
       `,
       errors: [
         {
-          endColumn: 12,
           column: 11,
+          endColumn: 12,
           line: 6,
           messageId: 'mixed',
         },
@@ -474,8 +477,8 @@ namespace Different {
       `,
       errors: [
         {
-          endColumn: 16,
           column: 15,
+          endColumn: 16,
           line: 6,
           messageId: 'mixed',
         },
@@ -495,14 +498,14 @@ namespace Different {
       `,
       errors: [
         {
-          endColumn: 18,
           column: 15,
+          endColumn: 18,
           line: 6,
           messageId: 'mixed',
         },
         {
-          endColumn: 18,
           column: 15,
+          endColumn: 18,
           line: 9,
           messageId: 'mixed',
         },
@@ -522,8 +525,8 @@ namespace Different {
       `,
       errors: [
         {
-          endColumn: 18,
           column: 15,
+          endColumn: 18,
           line: 6,
           messageId: 'mixed',
         },
@@ -543,8 +546,8 @@ namespace Different {
       `,
       errors: [
         {
-          endColumn: 18,
           column: 15,
+          endColumn: 18,
           line: 9,
           messageId: 'mixed',
         },
@@ -552,18 +555,18 @@ namespace Different {
     },
     {
       code: `
-import { AST_NODE_TYPES } from '@typescript-eslint/types';
+import { Enum } from './mixed-enums-decl';
 
-declare module '@typescript-eslint/types' {
-  enum AST_NODE_TYPES {
+declare module './mixed-enums-decl' {
+  enum Enum {
     Numeric = 0,
   }
 }
       `,
       errors: [
         {
-          endColumn: 16,
           column: 15,
+          endColumn: 16,
           line: 6,
           messageId: 'mixed',
         },
@@ -580,8 +583,8 @@ enum Foo {
       `,
       errors: [
         {
-          endColumn: 10,
           column: 7,
+          endColumn: 10,
           line: 6,
           messageId: 'mixed',
         },
@@ -602,8 +605,8 @@ namespace Test {
       `,
       errors: [
         {
-          endColumn: 12,
           column: 9,
+          endColumn: 12,
           line: 9,
           messageId: 'mixed',
         },
@@ -624,8 +627,8 @@ namespace Test {
       `,
       errors: [
         {
-          endColumn: 12,
           column: 9,
+          endColumn: 12,
           line: 9,
           messageId: 'mixed',
         },
@@ -650,8 +653,8 @@ namespace Outer {
       `,
       errors: [
         {
-          endColumn: 14,
           column: 11,
+          endColumn: 14,
           line: 12,
           messageId: 'mixed',
         },

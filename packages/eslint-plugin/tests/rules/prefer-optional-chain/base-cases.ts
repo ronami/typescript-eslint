@@ -1,228 +1,283 @@
-import type { TSESLint } from '@typescript-eslint/utils';
+import type { InvalidTestCase } from '@typescript-eslint/rule-tester';
 
-import type rule from '../../../src/rules/prefer-optional-chain';
 import type {
-  InferMessageIdsTypeFromRule,
-  InferOptionsTypeFromRule,
-} from '../../../src/util';
+  PreferOptionalChainMessageIds,
+  PreferOptionalChainOptions,
+} from '../../../src/rules/prefer-optional-chain-utils/PreferOptionalChainOptions';
 
-type InvalidTestCase = TSESLint.InvalidTestCase<
-  InferMessageIdsTypeFromRule<typeof rule>,
-  InferOptionsTypeFromRule<typeof rule>
->;
+type MutateFn = (c: string) => string;
+type BaseCaseCreator = (args: {
+  mutateCode?: MutateFn;
+  mutateDeclaration?: MutateFn;
+  mutateOutput?: MutateFn;
+  operator: '&&' | '||';
+  skipIds?: number[];
+  useSuggestionFixer?: true;
+}) => InvalidTestCase<
+  PreferOptionalChainMessageIds,
+  [PreferOptionalChainOptions]
+>[];
 
-interface BaseCase {
-  canReplaceAndWithOr: boolean;
-  output: string;
-  code: string;
-}
-
-const mapper = (c: BaseCase): InvalidTestCase => ({
-  code: c.code.trim(),
-  output: null,
-  errors: [
+const RawBaseCases = (operator: '&&' | '||') =>
+  [
+    // chained members
     {
-      messageId: 'preferOptionalChain',
-      suggestions: [
-        {
-          messageId: 'optionalChainSuggest',
-          output: c.output.trim(),
-        },
-      ],
+      chain: `foo ${operator} foo.bar;`,
+      declaration: 'declare const foo: {bar: number} | null | undefined;',
+      id: 1,
+      outputChain: 'foo?.bar;',
     },
-  ],
-});
-
-const baseCases: Array<BaseCase> = [
-  // chained members
-  {
-    code: 'foo && foo.bar',
-    output: 'foo?.bar',
-    canReplaceAndWithOr: true,
-  },
-  {
-    code: 'foo.bar && foo.bar.baz',
-    output: 'foo.bar?.baz',
-    canReplaceAndWithOr: true,
-  },
-  {
-    code: 'foo && foo()',
-    output: 'foo?.()',
-    canReplaceAndWithOr: true,
-  },
-  {
-    code: 'foo.bar && foo.bar()',
-    output: 'foo.bar?.()',
-    canReplaceAndWithOr: true,
-  },
-  {
-    code: 'foo && foo.bar && foo.bar.baz && foo.bar.baz.buzz',
-    output: 'foo?.bar?.baz?.buzz',
-    canReplaceAndWithOr: true,
-  },
-  {
-    code: 'foo.bar && foo.bar.baz && foo.bar.baz.buzz',
-    output: 'foo.bar?.baz?.buzz',
-    canReplaceAndWithOr: true,
-  },
-  // case with a jump (i.e. a non-nullish prop)
-  {
-    code: 'foo && foo.bar && foo.bar.baz.buzz',
-    output: 'foo?.bar?.baz.buzz',
-    canReplaceAndWithOr: true,
-  },
-  {
-    code: 'foo.bar && foo.bar.baz.buzz',
-    output: 'foo.bar?.baz.buzz',
-    canReplaceAndWithOr: true,
-  },
-  // case where for some reason there is a doubled up expression
-  {
-    code: 'foo && foo.bar && foo.bar.baz && foo.bar.baz && foo.bar.baz.buzz',
-    output: 'foo?.bar?.baz?.buzz',
-    canReplaceAndWithOr: true,
-  },
-  {
-    code: 'foo.bar && foo.bar.baz && foo.bar.baz && foo.bar.baz.buzz',
-    output: 'foo.bar?.baz?.buzz',
-    canReplaceAndWithOr: true,
-  },
-  // chained members with element access
-  {
-    code: 'foo && foo[bar] && foo[bar].baz && foo[bar].baz.buzz',
-    output: 'foo?.[bar]?.baz?.buzz',
-    canReplaceAndWithOr: true,
-  },
-  {
+    {
+      chain: `foo.bar ${operator} foo.bar.baz;`,
+      declaration:
+        'declare const foo: {bar: {baz: number} | null | undefined};',
+      id: 2,
+      outputChain: 'foo.bar?.baz;',
+    },
+    {
+      chain: `foo ${operator} foo();`,
+      declaration: 'declare const foo: (() => number) | null | undefined;',
+      id: 3,
+      outputChain: 'foo?.();',
+    },
+    {
+      chain: `foo.bar ${operator} foo.bar();`,
+      declaration:
+        'declare const foo: {bar: (() => number) | null | undefined};',
+      id: 4,
+      outputChain: 'foo.bar?.();',
+    },
+    {
+      chain: `foo ${operator} foo.bar ${operator} foo.bar.baz ${operator} foo.bar.baz.buzz;`,
+      declaration:
+        'declare const foo: {bar: {baz: {buzz: number} | null | undefined} | null | undefined} | null | undefined;',
+      id: 5,
+      outputChain: 'foo?.bar?.baz?.buzz;',
+    },
+    {
+      chain: `foo.bar ${operator} foo.bar.baz ${operator} foo.bar.baz.buzz;`,
+      declaration:
+        'declare const foo: {bar: {baz: {buzz: number} | null | undefined} | null | undefined};',
+      id: 6,
+      outputChain: 'foo.bar?.baz?.buzz;',
+    },
     // case with a jump (i.e. a non-nullish prop)
-    code: 'foo && foo[bar].baz && foo[bar].baz.buzz',
-    output: 'foo?.[bar].baz?.buzz',
-    canReplaceAndWithOr: true,
-  },
-  // case with a property access in computed property
-  {
-    code: 'foo && foo[bar.baz] && foo[bar.baz].buzz',
-    output: 'foo?.[bar.baz]?.buzz',
-    canReplaceAndWithOr: true,
-  },
-  // case with this keyword
-  {
-    code: 'foo[this.bar] && foo[this.bar].baz',
-    output: 'foo[this.bar]?.baz',
-    canReplaceAndWithOr: true,
-  },
-  // chained calls
-  {
-    code: 'foo && foo.bar && foo.bar.baz && foo.bar.baz.buzz()',
-    output: 'foo?.bar?.baz?.buzz()',
-    canReplaceAndWithOr: true,
-  },
-  {
-    code: 'foo && foo.bar && foo.bar.baz && foo.bar.baz.buzz && foo.bar.baz.buzz()',
-    output: 'foo?.bar?.baz?.buzz?.()',
-    canReplaceAndWithOr: true,
-  },
-  {
-    code: 'foo.bar && foo.bar.baz && foo.bar.baz.buzz && foo.bar.baz.buzz()',
-    output: 'foo.bar?.baz?.buzz?.()',
-    canReplaceAndWithOr: true,
-  },
-  // case with a jump (i.e. a non-nullish prop)
-  {
-    code: 'foo && foo.bar && foo.bar.baz.buzz()',
-    output: 'foo?.bar?.baz.buzz()',
-    canReplaceAndWithOr: true,
-  },
-  {
-    code: 'foo.bar && foo.bar.baz.buzz()',
-    output: 'foo.bar?.baz.buzz()',
-    canReplaceAndWithOr: true,
-  },
-  {
+    {
+      chain: `foo ${operator} foo.bar ${operator} foo.bar.baz.buzz;`,
+      declaration:
+        'declare const foo: {bar: {baz: {buzz: number}} | null | undefined} | null | undefined;',
+      id: 7,
+      outputChain: 'foo?.bar?.baz.buzz;',
+    },
+    {
+      chain: `foo.bar ${operator} foo.bar.baz.buzz;`,
+      declaration:
+        'declare const foo: {bar: {baz: {buzz: number}} | null | undefined};',
+      id: 8,
+      outputChain: 'foo.bar?.baz.buzz;',
+    },
+    // case where for some reason there is a doubled up expression
+    {
+      chain: `foo ${operator} foo.bar ${operator} foo.bar.baz ${operator} foo.bar.baz ${operator} foo.bar.baz.buzz;`,
+      declaration:
+        'declare const foo: {bar: {baz: {buzz: number} | null | undefined} | null | undefined} | null | undefined;',
+      id: 9,
+      outputChain: 'foo?.bar?.baz?.buzz;',
+    },
+    {
+      chain: `foo.bar ${operator} foo.bar.baz ${operator} foo.bar.baz ${operator} foo.bar.baz.buzz;`,
+      declaration:
+        'declare const foo: {bar: {baz: {buzz: number} | null | undefined} | null | undefined} | null | undefined;',
+      id: 10,
+      outputChain: 'foo.bar?.baz?.buzz;',
+    },
+    // chained members with element access
+    {
+      chain: `foo ${operator} foo[bar] ${operator} foo[bar].baz ${operator} foo[bar].baz.buzz;`,
+      declaration: [
+        'declare const bar: string;',
+        'declare const foo: {[k: string]: {baz: {buzz: number} | null | undefined} | null | undefined} | null | undefined;',
+      ].join('\n'),
+      id: 11,
+      outputChain: 'foo?.[bar]?.baz?.buzz;',
+    },
+    {
+      id: 12,
+      // case with a jump (i.e. a non-nullish prop)
+      chain: `foo ${operator} foo[bar].baz ${operator} foo[bar].baz.buzz;`,
+      declaration: [
+        'declare const bar: string;',
+        'declare const foo: {[k: string]: {baz: {buzz: number} | null | undefined} | null | undefined} | null | undefined;',
+      ].join('\n'),
+      outputChain: 'foo?.[bar].baz?.buzz;',
+    },
+    // case with a property access in computed property
+    {
+      chain: `foo ${operator} foo[bar.baz] ${operator} foo[bar.baz].buzz;`,
+      declaration: [
+        'declare const bar: {baz: string};',
+        'declare const foo: {[k: string]: {buzz: number} | null | undefined} | null | undefined;',
+      ].join('\n'),
+      id: 13,
+      outputChain: 'foo?.[bar.baz]?.buzz;',
+    },
+    // chained calls
+    {
+      chain: `foo ${operator} foo.bar ${operator} foo.bar.baz ${operator} foo.bar.baz.buzz();`,
+      declaration:
+        'declare const foo: {bar: {baz: {buzz: () => number} | null | undefined} | null | undefined} | null | undefined;',
+      id: 14,
+      outputChain: 'foo?.bar?.baz?.buzz();',
+    },
+    {
+      chain: `foo ${operator} foo.bar ${operator} foo.bar.baz ${operator} foo.bar.baz.buzz ${operator} foo.bar.baz.buzz();`,
+      declaration:
+        'declare const foo: {bar: {baz: {buzz: (() => number) | null | undefined} | null | undefined} | null | undefined} | null | undefined;',
+      id: 15,
+      outputChain: 'foo?.bar?.baz?.buzz?.();',
+    },
+    {
+      chain: `foo.bar ${operator} foo.bar.baz ${operator} foo.bar.baz.buzz ${operator} foo.bar.baz.buzz();`,
+      declaration:
+        'declare const foo: {bar: {baz: {buzz: (() => number) | null | undefined} | null | undefined} | null | undefined};',
+      id: 16,
+      outputChain: 'foo.bar?.baz?.buzz?.();',
+    },
     // case with a jump (i.e. a non-nullish prop)
-    code: 'foo && foo.bar && foo.bar.baz.buzz && foo.bar.baz.buzz()',
-    output: 'foo?.bar?.baz.buzz?.()',
-    canReplaceAndWithOr: true,
-  },
-  {
-    // case with a call expr inside the chain for some inefficient reason
-    code: 'foo && foo.bar() && foo.bar().baz && foo.bar().baz.buzz && foo.bar().baz.buzz()',
-    output: 'foo?.bar()?.baz?.buzz?.()',
-    canReplaceAndWithOr: true,
-  },
-  // chained calls with element access
-  {
-    code: 'foo && foo.bar && foo.bar.baz && foo.bar.baz[buzz]()',
-    output: 'foo?.bar?.baz?.[buzz]()',
-    canReplaceAndWithOr: true,
-  },
-  {
-    code: 'foo && foo.bar && foo.bar.baz && foo.bar.baz[buzz] && foo.bar.baz[buzz]()',
-    output: 'foo?.bar?.baz?.[buzz]?.()',
-    canReplaceAndWithOr: true,
-  },
-  // (partially) pre-optional chained
-  {
-    code: 'foo && foo?.bar && foo?.bar.baz && foo?.bar.baz[buzz] && foo?.bar.baz[buzz]()',
-    output: 'foo?.bar?.baz?.[buzz]?.()',
-    canReplaceAndWithOr: true,
-  },
-  {
-    code: 'foo && foo?.bar.baz && foo?.bar.baz[buzz]',
-    output: 'foo?.bar.baz?.[buzz]',
-    canReplaceAndWithOr: true,
-  },
-  {
-    code: 'foo && foo?.() && foo?.().bar',
-    output: 'foo?.()?.bar',
-    canReplaceAndWithOr: true,
-  },
-  {
-    code: 'foo.bar && foo.bar?.() && foo.bar?.().baz',
-    output: 'foo.bar?.()?.baz',
-    canReplaceAndWithOr: true,
-  },
-  {
-    code: 'foo !== null && foo.bar !== null',
-    output: 'foo?.bar != null',
-    canReplaceAndWithOr: false,
-  },
-  {
-    code: 'foo != null && foo.bar != null',
-    output: 'foo?.bar != null',
-    canReplaceAndWithOr: false,
-  },
-  {
-    code: 'foo != null && foo.bar !== null',
-    output: 'foo?.bar != null',
-    canReplaceAndWithOr: false,
-  },
-  {
-    code: 'foo !== null && foo.bar != null',
-    output: 'foo?.bar != null',
-    canReplaceAndWithOr: false,
-  },
-];
+    {
+      chain: `foo ${operator} foo.bar ${operator} foo.bar.baz.buzz();`,
+      declaration:
+        'declare const foo: {bar: {baz: {buzz: () => number}} | null | undefined} | null | undefined;',
+      id: 17,
+      outputChain: 'foo?.bar?.baz.buzz();',
+    },
+    {
+      chain: `foo.bar ${operator} foo.bar.baz.buzz();`,
+      declaration:
+        'declare const foo: {bar: {baz: {buzz: () => number}} | null | undefined};',
+      id: 18,
+      outputChain: 'foo.bar?.baz.buzz();',
+    },
+    {
+      id: 19,
+      // case with a jump (i.e. a non-nullish prop)
+      chain: `foo ${operator} foo.bar ${operator} foo.bar.baz.buzz ${operator} foo.bar.baz.buzz();`,
+      declaration:
+        'declare const foo: {bar: {baz: {buzz: (() => number) | null | undefined}} | null | undefined} | null | undefined;',
+      outputChain: 'foo?.bar?.baz.buzz?.();',
+    },
+    {
+      id: 20,
+      // case with a call expr inside the chain for some inefficient reason
+      chain: `foo.bar ${operator} foo.bar() ${operator} foo.bar().baz ${operator} foo.bar().baz.buzz ${operator} foo.bar().baz.buzz();`,
+      declaration:
+        'declare const foo: {bar: () => ({baz: {buzz: (() => number) | null | undefined} | null | undefined}) | null | undefined};',
+      outputChain: 'foo.bar?.()?.baz?.buzz?.();',
+    },
+    // chained calls with element access
+    {
+      chain: `foo ${operator} foo.bar ${operator} foo.bar.baz ${operator} foo.bar.baz[buzz]();`,
+      declaration: [
+        'declare const buzz: string;',
+        'declare const foo: {bar: {baz: {[k: string]: () => number} | null | undefined} | null | undefined} | null | undefined;',
+      ].join('\n'),
+      id: 21,
+      outputChain: 'foo?.bar?.baz?.[buzz]();',
+    },
+    {
+      chain: `foo ${operator} foo.bar ${operator} foo.bar.baz ${operator} foo.bar.baz[buzz] ${operator} foo.bar.baz[buzz]();`,
+      declaration: [
+        'declare const buzz: string;',
+        'declare const foo: {bar: {baz: {[k: string]: (() => number) | null | undefined} | null | undefined} | null | undefined} | null | undefined;',
+      ].join('\n'),
+      id: 22,
+      outputChain: 'foo?.bar?.baz?.[buzz]?.();',
+    },
+    // (partially) pre-optional chained
+    {
+      chain: `foo ${operator} foo?.bar ${operator} foo?.bar.baz ${operator} foo?.bar.baz[buzz] ${operator} foo?.bar.baz[buzz]();`,
+      declaration: [
+        'declare const buzz: string;',
+        'declare const foo: {bar: {baz: {[k: string]: (() => number) | null | undefined} | null | undefined} | null | undefined} | null | undefined;',
+      ].join('\n'),
+      id: 23,
+      outputChain: 'foo?.bar?.baz?.[buzz]?.();',
+    },
+    {
+      chain: `foo ${operator} foo?.bar.baz ${operator} foo?.bar.baz[buzz];`,
+      declaration: [
+        'declare const buzz: string;',
+        'declare const foo: {bar: {baz: {[k: string]: number} | null | undefined}} | null | undefined;',
+      ].join('\n'),
+      id: 24,
+      outputChain: 'foo?.bar.baz?.[buzz];',
+    },
+    {
+      chain: `foo ${operator} foo?.() ${operator} foo?.().bar;`,
+      declaration:
+        'declare const foo: (() => ({bar: number} | null | undefined)) | null | undefined;',
+      id: 25,
+      outputChain: 'foo?.()?.bar;',
+    },
+    {
+      chain: `foo.bar ${operator} foo.bar?.() ${operator} foo.bar?.().baz;`,
+      declaration:
+        'declare const foo: {bar: () => ({baz: number} | null | undefined)};',
+      id: 26,
+      outputChain: 'foo.bar?.()?.baz;',
+    },
+  ] as const;
 
-interface Selector {
-  all(): Array<InvalidTestCase>;
-  select<K extends Exclude<keyof BaseCase, 'code' | 'output'>>(
-    key: K,
-    value: BaseCase[K],
-  ): Selector;
-}
+export const identity: MutateFn = c => c;
+export const BaseCases: BaseCaseCreator = ({
+  mutateCode = identity,
+  mutateDeclaration = identity,
+  mutateOutput = mutateCode,
+  operator,
+  skipIds = [],
+  useSuggestionFixer = false,
+}) => {
+  const skipIdsSet = new Set(skipIds);
+  const skipSpecifiedIds: (
+    arg: ReturnType<typeof RawBaseCases>[number],
+  ) => boolean =
+    skipIds.length === 0
+      ? (): boolean => true
+      : ({ id }): boolean => !skipIdsSet.has(id);
 
-const selector = (cases: Array<BaseCase>): Selector => ({
-  all: () => cases.map(mapper),
-  select: <K extends Exclude<keyof BaseCase, 'code' | 'output'>>(
-    key: K,
-    value: BaseCase[K],
-  ): Selector => {
-    const selectedCases = baseCases.filter(c => c[key] === value);
-    return selector(selectedCases);
-  },
-});
+  return RawBaseCases(operator)
+    .filter(skipSpecifiedIds)
+    .map(
+      ({
+        chain,
+        declaration: originalDeclaration,
+        id,
+        outputChain,
+      }): InvalidTestCase<
+        PreferOptionalChainMessageIds,
+        [PreferOptionalChainOptions]
+      > => {
+        const declaration = mutateDeclaration(originalDeclaration);
+        const code = `// ${id}\n${declaration}\n${mutateCode(chain)}`;
+        const output = `// ${id}\n${declaration}\n${mutateOutput(outputChain)}`;
 
-const { all, select } = selector(baseCases);
-
-export { all, select };
+        return {
+          code,
+          errors: [
+            {
+              messageId: 'preferOptionalChain',
+              suggestions: !useSuggestionFixer
+                ? null
+                : [
+                    {
+                      messageId: 'optionalChainSuggest',
+                      output,
+                    },
+                  ],
+            },
+          ],
+          output: useSuggestionFixer ? null : output,
+        };
+      },
+    );
+};

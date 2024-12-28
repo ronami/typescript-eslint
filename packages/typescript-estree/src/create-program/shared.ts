@@ -1,14 +1,19 @@
-import path from 'path';
 import type { Program } from 'typescript';
+
+import path from 'node:path';
 import * as ts from 'typescript';
 
-import type { ModuleResolver } from '../parser-options';
 import type { ParseSettings } from '../parseSettings';
 
-interface ASTAndProgram {
+interface ASTAndNoProgram {
+  ast: ts.SourceFile;
+  program: null;
+}
+interface ASTAndDefiniteProgram {
   ast: ts.SourceFile;
   program: ts.Program;
 }
+type ASTAndProgram = ASTAndDefiniteProgram | ASTAndNoProgram;
 
 /**
  * Compiler options required to avoid critical functionality issues
@@ -28,10 +33,21 @@ const CORE_COMPILER_OPTIONS: ts.CompilerOptions = {
  */
 const DEFAULT_COMPILER_OPTIONS: ts.CompilerOptions = {
   ...CORE_COMPILER_OPTIONS,
-  allowNonTsExtensions: true,
   allowJs: true,
+  allowNonTsExtensions: true,
   checkJs: true,
 };
+
+const DEFAULT_EXTRA_FILE_EXTENSIONS = new Set<string>([
+  ts.Extension.Cjs,
+  ts.Extension.Cts,
+  ts.Extension.Js,
+  ts.Extension.Jsx,
+  ts.Extension.Mjs,
+  ts.Extension.Mts,
+  ts.Extension.Ts,
+  ts.Extension.Tsx,
+]);
 
 function createDefaultCompilerOptionsFromExtra(
   parseSettings: ParseSettings,
@@ -47,10 +63,11 @@ function createDefaultCompilerOptionsFromExtra(
 }
 
 // This narrows the type so we can be sure we're passing canonical names in the correct places
-type CanonicalPath = string & { __brand: unknown };
+type CanonicalPath = { __brand: unknown } & string;
 
 // typescript doesn't provide a ts.sys implementation for browser environments
 const useCaseSensitiveFileNames =
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition, @typescript-eslint/internal/eqeq-nullish
   ts.sys !== undefined ? ts.sys.useCaseSensitiveFileNames : true;
 const correctPathCasing = useCaseSensitiveFileNames
   ? (filePath: string): string => filePath
@@ -93,35 +110,18 @@ function getExtension(fileName: string | undefined): string | null {
 
 function getAstFromProgram(
   currentProgram: Program,
-  parseSettings: ParseSettings,
-): ASTAndProgram | undefined {
-  const ast = currentProgram.getSourceFile(parseSettings.filePath);
+  filePath: string,
+): ASTAndDefiniteProgram | undefined {
+  const ast = currentProgram.getSourceFile(filePath);
 
   // working around https://github.com/typescript-eslint/typescript-eslint/issues/1573
-  const expectedExt = getExtension(parseSettings.filePath);
+  const expectedExt = getExtension(filePath);
   const returnedExt = getExtension(ast?.fileName);
   if (expectedExt !== returnedExt) {
     return undefined;
   }
 
   return ast && { ast, program: currentProgram };
-}
-
-function getModuleResolver(moduleResolverPath: string): ModuleResolver {
-  let moduleResolver: ModuleResolver;
-
-  try {
-    moduleResolver = require(moduleResolverPath) as ModuleResolver;
-  } catch (error) {
-    const errorLines = [
-      'Could not find the provided parserOptions.moduleResolver.',
-      'Hint: use an absolute path if you are not in control over where the ESLint instance runs.',
-    ];
-
-    throw new Error(errorLines.join('\n'));
-  }
-
-  return moduleResolver;
 }
 
 /**
@@ -131,6 +131,7 @@ function getModuleResolver(moduleResolverPath: string): ModuleResolver {
  */
 function createHash(content: string): string {
   // No ts.sys in browser environments.
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (ts.sys?.createHash) {
     return ts.sys.createHash(content);
   }
@@ -138,14 +139,16 @@ function createHash(content: string): string {
 }
 
 export {
-  ASTAndProgram,
-  CORE_COMPILER_OPTIONS,
+  type ASTAndDefiniteProgram,
+  type ASTAndNoProgram,
+  type ASTAndProgram,
   canonicalDirname,
-  CanonicalPath,
+  type CanonicalPath,
+  CORE_COMPILER_OPTIONS,
   createDefaultCompilerOptionsFromExtra,
   createHash,
+  DEFAULT_EXTRA_FILE_EXTENSIONS,
   ensureAbsolutePath,
-  getCanonicalFileName,
   getAstFromProgram,
-  getModuleResolver,
+  getCanonicalFileName,
 };

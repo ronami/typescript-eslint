@@ -6,7 +6,7 @@ Program {
   body: [
     ExportNamedDeclaration {
       type: "ExportNamedDeclaration",
-      assertions: [],
+      attributes: [],
       declaration: TSDeclareFunction {
         type: "TSDeclareFunction",
         async: false,
@@ -15,7 +15,9 @@ Program {
         generator: false,
         id: Identifier {
           type: "Identifier",
+          decorators: [],
           name: "foo",
+          optional: false,
 
           range: [24, 27],
           loc: {

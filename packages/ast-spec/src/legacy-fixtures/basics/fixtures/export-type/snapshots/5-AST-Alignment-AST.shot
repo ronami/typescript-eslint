@@ -10,7 +10,8 @@ exports[`AST Fixtures legacy-fixtures basics export-type AST Alignment - AST 1`]
     body: Array [
       ExportNamedDeclaration {
         type: 'ExportNamedDeclaration',
-        assertions: Array [],
+-       attributes: Array [],
++       assertions: Array [],
         declaration: null,
         exportKind: 'type',
         source: null,
@@ -19,7 +20,9 @@ exports[`AST Fixtures legacy-fixtures basics export-type AST Alignment - AST 1`]
             type: 'ExportSpecifier',
             exported: Identifier {
               type: 'Identifier',
+-             decorators: Array [],
               name: 'foo',
+-             optional: false,
 
               range: [87, 90],
               loc: {
@@ -30,7 +33,9 @@ exports[`AST Fixtures legacy-fixtures basics export-type AST Alignment - AST 1`]
             exportKind: 'value',
             local: Identifier {
               type: 'Identifier',
+-             decorators: Array [],
               name: 'foo',
+-             optional: false,
 
               range: [87, 90],
               loc: {

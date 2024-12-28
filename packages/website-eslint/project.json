@@ -2,5 +2,11 @@
   "name": "website-eslint",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "type": "library",
-  "implicitDependencies": []
+  "implicitDependencies": [],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"]
+    }
+  }
 }

@@ -6,9 +6,12 @@ Program {
   body: [
     TSTypeAliasDeclaration {
       type: "TSTypeAliasDeclaration",
+      declare: false,
       id: Identifier {
         type: "Identifier",
+        decorators: [],
         name: "Test",
+        optional: false,
 
         range: [78, 82],
         loc: {
@@ -18,6 +21,49 @@ Program {
       },
       typeAnnotation: TSMappedType {
         type: "TSMappedType",
+        constraint: TSTypeOperator {
+          type: "TSTypeOperator",
+          operator: "keyof",
+          typeAnnotation: TSTypeReference {
+            type: "TSTypeReference",
+            typeName: Identifier {
+              type: "Identifier",
+              decorators: [],
+              name: "T",
+              optional: false,
+
+              range: [104, 105],
+              loc: {
+                start: { column: 14, line: 4 },
+                end: { column: 15, line: 4 },
+              },
+            },
+
+            range: [104, 105],
+            loc: {
+              start: { column: 14, line: 4 },
+              end: { column: 15, line: 4 },
+            },
+          },
+
+          range: [98, 105],
+          loc: {
+            start: { column: 8, line: 4 },
+            end: { column: 15, line: 4 },
+          },
+        },
+        key: Identifier {
+          type: "Identifier",
+          decorators: [],
+          name: "P",
+          optional: false,
+
+          range: [93, 94],
+          loc: {
+            start: { column: 3, line: 4 },
+            end: { column: 4, line: 4 },
+          },
+        },
         nameType: TSLiteralType {
           type: "TSLiteralType",
           literal: Literal {
@@ -44,7 +90,9 @@ Program {
             type: "TSTypeReference",
             typeName: Identifier {
               type: "Identifier",
+              decorators: [],
               name: "P",
+              optional: false,
 
               range: [117, 118],
               loc: {
@@ -63,7 +111,9 @@ Program {
             type: "TSTypeReference",
             typeName: Identifier {
               type: "Identifier",
+              decorators: [],
               name: "T",
+              optional: false,
 
               range: [115, 116],
               loc: {
@@ -85,57 +135,6 @@ Program {
             end: { column: 29, line: 4 },
           },
         },
-        typeParameter: TSTypeParameter {
-          type: "TSTypeParameter",
-          const: false,
-          constraint: TSTypeOperator {
-            type: "TSTypeOperator",
-            operator: "keyof",
-            typeAnnotation: TSTypeReference {
-              type: "TSTypeReference",
-              typeName: Identifier {
-                type: "Identifier",
-                name: "T",
-
-                range: [104, 105],
-                loc: {
-                  start: { column: 14, line: 4 },
-                  end: { column: 15, line: 4 },
-                },
-              },
-
-              range: [104, 105],
-              loc: {
-                start: { column: 14, line: 4 },
-                end: { column: 15, line: 4 },
-              },
-            },
-
-            range: [98, 105],
-            loc: {
-              start: { column: 8, line: 4 },
-              end: { column: 15, line: 4 },
-            },
-          },
-          in: false,
-          name: Identifier {
-            type: "Identifier",
-            name: "P",
-
-            range: [93, 94],
-            loc: {
-              start: { column: 3, line: 4 },
-              end: { column: 4, line: 4 },
-            },
-          },
-          out: false,
-
-          range: [93, 105],
-          loc: {
-            start: { column: 3, line: 4 },
-            end: { column: 15, line: 4 },
-          },
-        },
 
         range: [88, 122],
         loc: {
@@ -152,7 +151,9 @@ Program {
             in: false,
             name: Identifier {
               type: "Identifier",
+              decorators: [],
               name: "T",
+              optional: false,
 
               range: [83, 84],
               loc: {

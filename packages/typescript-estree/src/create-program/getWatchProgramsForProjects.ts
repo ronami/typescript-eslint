@@ -1,18 +1,18 @@
 import debug from 'debug';
-import fs from 'fs';
-import semver from 'semver';
+import fs from 'node:fs';
 import * as ts from 'typescript';
 
 import type { ParseSettings } from '../parseSettings';
 import type { CanonicalPath } from './shared';
+import type { WatchCompilerHostOfConfigFile } from './WatchCompilerHostOfConfigFile';
+
+import { getCodeText } from '../source-files';
 import {
   canonicalDirname,
   createDefaultCompilerOptionsFromExtra,
   createHash,
   getCanonicalFileName,
-  getModuleResolver,
 } from './shared';
-import type { WatchCompilerHostOfConfigFile } from './WatchCompilerHostOfConfigFile';
 
 const log = debug('typescript-eslint:typescript-estree:createWatchProgram');
 
@@ -91,7 +91,10 @@ function saveWatchCallback(
 /**
  * Holds information about the file currently being linted
  */
-const currentLintOperationState: { code: string; filePath: CanonicalPath } = {
+const currentLintOperationState: {
+  code: string | ts.SourceFile;
+  filePath: CanonicalPath;
+} = {
   code: '',
   filePath: '' as CanonicalPath,
 };
@@ -109,14 +112,10 @@ function diagnosticReporter(diagnostic: ts.Diagnostic): void {
 function updateCachedFileList(
   tsconfigPath: CanonicalPath,
   program: ts.Program,
-  parseSettings: ParseSettings,
 ): Set<CanonicalPath> {
-  const fileList =
-    parseSettings.EXPERIMENTAL_useSourceOfProjectReferenceRedirect
-      ? new Set(
-          program.getSourceFiles().map(sf => getCanonicalFileName(sf.fileName)),
-        )
-      : new Set(program.getRootFileNames().map(f => getCanonicalFileName(f)));
+  const fileList = new Set(
+    program.getRootFileNames().map(f => getCanonicalFileName(f)),
+  );
   programFileListCache.set(tsconfigPath, fileList);
   return fileList;
 }
@@ -138,7 +137,7 @@ function getWatchProgramsForProjects(
 
   // Update file version if necessary
   const fileWatchCallbacks = fileWatchCallbackTrackingMap.get(filePath);
-  const codeHash = createHash(parseSettings.code);
+  const codeHash = createHash(getCodeText(parseSettings.code));
   if (
     parsedFilesSeenHash.get(filePath) !== codeHash &&
     fileWatchCallbacks &&
@@ -149,7 +148,7 @@ function getWatchProgramsForProjects(
     );
   }
 
-  const currentProjectsFromSettings = new Set(parseSettings.projects);
+  const currentProjectsFromSettings = new Map(parseSettings.projects);
 
   /*
    * before we go into the process of attempting to find and update every program
@@ -168,18 +167,13 @@ function getWatchProgramsForProjects(
     let updatedProgram: ts.Program | null = null;
     if (!fileList) {
       updatedProgram = existingWatch.getProgram().getProgram();
-      fileList = updateCachedFileList(
-        tsconfigPath,
-        updatedProgram,
-        parseSettings,
-      );
+      fileList = updateCachedFileList(tsconfigPath, updatedProgram);
     }
 
     if (fileList.has(filePath)) {
       log('Found existing program for file. %s', filePath);
 
-      updatedProgram =
-        updatedProgram ?? existingWatch.getProgram().getProgram();
+      updatedProgram ??= existingWatch.getProgram().getProgram();
       // sets parent pointers in source files
       updatedProgram.getTypeChecker();
 
@@ -197,13 +191,13 @@ function getWatchProgramsForProjects(
    * - the file is new/renamed, and the program hasn't been updated.
    */
   for (const tsconfigPath of parseSettings.projects) {
-    const existingWatch = knownWatchProgramMap.get(tsconfigPath);
+    const existingWatch = knownWatchProgramMap.get(tsconfigPath[0]);
 
     if (existingWatch) {
       const updatedProgram = maybeInvalidateProgram(
         existingWatch,
         filePath,
-        tsconfigPath,
+        tsconfigPath[0],
       );
       if (!updatedProgram) {
         continue;
@@ -213,11 +207,7 @@ function getWatchProgramsForProjects(
       updatedProgram.getTypeChecker();
 
       // cache and check the file list
-      const fileList = updateCachedFileList(
-        tsconfigPath,
-        updatedProgram,
-        parseSettings,
-      );
+      const fileList = updateCachedFileList(tsconfigPath[0], updatedProgram);
       if (fileList.has(filePath)) {
         log('Found updated program for file. %s', filePath);
         // we can return early because we know this program contains the file
@@ -228,15 +218,15 @@ function getWatchProgramsForProjects(
       continue;
     }
 
-    const programWatch = createWatchProgram(tsconfigPath, parseSettings);
-    knownWatchProgramMap.set(tsconfigPath, programWatch);
+    const programWatch = createWatchProgram(tsconfigPath[1], parseSettings);
+    knownWatchProgramMap.set(tsconfigPath[0], programWatch);
 
     const program = programWatch.getProgram().getProgram();
     // sets parent pointers in source files
     program.getTypeChecker();
 
     // cache and check the file list
-    const fileList = updateCachedFileList(tsconfigPath, program, parseSettings);
+    const fileList = updateCachedFileList(tsconfigPath[0], program);
     if (fileList.has(filePath)) {
       log('Found program for file. %s', filePath);
       // we can return early because we know this program contains the file
@@ -248,10 +238,6 @@ function getWatchProgramsForProjects(
 
   return results;
 }
-
-const isRunningNoTimeoutFix = semver.satisfies(ts.version, '>=3.9.0-beta', {
-  includePrerelease: true,
-});
 
 function createWatchProgram(
   tsconfigPath: string,
@@ -266,15 +252,11 @@ function createWatchProgram(
     ts.sys,
     ts.createAbstractBuilder,
     diagnosticReporter,
+    // TODO: file issue on TypeScript to suggest making optional?
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
     /*reportWatchStatus*/ () => {},
   ) as WatchCompilerHostOfConfigFile<ts.BuilderProgram>;
-
-  if (parseSettings.moduleResolver) {
-    // eslint-disable-next-line deprecation/deprecation -- intentional for older TS versions
-    watchCompilerHost.resolveModuleNames = getModuleResolver(
-      parseSettings.moduleResolver,
-    ).resolveModuleNames;
-  }
+  watchCompilerHost.jsDocParsingMode = parseSettings.jsDocParsingMode;
 
   // ensure readFile reads the code being linted instead of the copy on disk
   const oldReadFile = watchCompilerHost.readFile;
@@ -282,9 +264,9 @@ function createWatchProgram(
     const filePath = getCanonicalFileName(filePathIn);
     const fileContent =
       filePath === currentLintOperationState.filePath
-        ? currentLintOperationState.code
+        ? getCodeText(currentLintOperationState.code)
         : oldReadFile(filePath, encoding);
-    if (fileContent !== undefined) {
+    if (fileContent != null) {
       parsedFilesSeenHash.set(filePath, createHash(fileContent));
     }
     return fileContent;
@@ -338,7 +320,7 @@ function createWatchProgram(
         path,
         !extensions
           ? undefined
-          : extensions.concat(parseSettings.extraFileExtensions),
+          : [...extensions, ...parseSettings.extraFileExtensions],
         exclude,
         include,
         depth,
@@ -355,43 +337,11 @@ function createWatchProgram(
   );
   watchCompilerHost.trace = log;
 
-  /**
-   * TODO: this needs refinement and development, but we're allowing users to opt-in to this for now for testing and feedback.
-   * See https://github.com/typescript-eslint/typescript-eslint/issues/2094
-   */
-  watchCompilerHost.useSourceOfProjectReferenceRedirect = (): boolean =>
-    parseSettings.EXPERIMENTAL_useSourceOfProjectReferenceRedirect;
-
   // Since we don't want to asynchronously update program we want to disable timeout methods
   // So any changes in the program will be delayed and updated when getProgram is called on watch
-  let callback: (() => void) | undefined;
-  if (isRunningNoTimeoutFix) {
-    watchCompilerHost.setTimeout = undefined;
-    watchCompilerHost.clearTimeout = undefined;
-  } else {
-    log('Running without timeout fix');
-    // But because of https://github.com/microsoft/TypeScript/pull/37308 we cannot just set it to undefined
-    // instead save it and call before getProgram is called
-    watchCompilerHost.setTimeout = (cb, _ms, ...args: unknown[]): unknown => {
-      callback = cb.bind(/*this*/ undefined, ...args);
-      return callback;
-    };
-    watchCompilerHost.clearTimeout = (): void => {
-      callback = undefined;
-    };
-  }
-  const watch = ts.createWatchProgram(watchCompilerHost);
-  if (!isRunningNoTimeoutFix) {
-    const originalGetProgram = watch.getProgram;
-    watch.getProgram = (): ts.BuilderProgram => {
-      if (callback) {
-        callback();
-      }
-      callback = undefined;
-      return originalGetProgram.call(watch);
-    };
-  }
-  return watch;
+  watchCompilerHost.setTimeout = undefined;
+  watchCompilerHost.clearTimeout = undefined;
+  return ts.createWatchProgram(watchCompilerHost);
 }
 
 function hasTSConfigChanged(tsconfigPath: CanonicalPath): boolean {
@@ -402,7 +352,7 @@ function hasTSConfigChanged(tsconfigPath: CanonicalPath): boolean {
 
   tsconfigLastModifiedTimestampCache.set(tsconfigPath, lastModifiedAt);
 
-  if (cachedLastModifiedAt === undefined) {
+  if (cachedLastModifiedAt == null) {
     return false;
   }
 
@@ -432,6 +382,7 @@ function maybeInvalidateProgram(
      * We need to make sure typescript knows this so it can update appropriately
      */
     log('tsconfig has changed - triggering program update. %s', tsconfigPath);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     fileWatchCallbackTrackingMap
       .get(tsconfigPath)!
       .forEach(cb => cb(tsconfigPath, ts.FileWatcherEventKind.Changed));
@@ -459,12 +410,12 @@ function maybeInvalidateProgram(
     current = next;
     const folderWatchCallbacks = folderWatchCallbackTrackingMap.get(current);
     if (folderWatchCallbacks) {
-      folderWatchCallbacks.forEach(cb => {
+      for (const cb of folderWatchCallbacks) {
         if (currentDir !== current) {
           cb(currentDir, ts.FileWatcherEventKind.Changed);
         }
-        cb(current!, ts.FileWatcherEventKind.Changed);
-      });
+        cb(current, ts.FileWatcherEventKind.Changed);
+      }
       hasCallback = true;
     }
 

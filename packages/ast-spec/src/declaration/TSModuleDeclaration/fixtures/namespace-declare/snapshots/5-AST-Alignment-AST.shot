@@ -21,9 +21,12 @@ exports[`AST Fixtures declaration TSModuleDeclaration namespace-declare AST Alig
           },
         },
         declare: true,
+-       global: false,
         id: Identifier {
           type: 'Identifier',
+-         decorators: Array [],
           name: 'F',
+-         optional: false,
 
           range: [18, 19],
           loc: {
@@ -31,7 +34,7 @@ exports[`AST Fixtures declaration TSModuleDeclaration namespace-declare AST Alig
             end: { column: 19, line: 1 },
           },
         },
--       kind: 'namespace',
+        kind: 'namespace',
 
         range: [0, 22],
         loc: {

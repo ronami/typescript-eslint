@@ -21,9 +21,12 @@ exports[`AST Fixtures legacy-fixtures declare module AST Alignment - AST 1`] = `
           },
         },
         declare: true,
+-       global: false,
         id: Identifier {
           type: 'Identifier',
+-         decorators: Array [],
           name: 'Foo',
+-         optional: false,
 
           range: [88, 91],
           loc: {
@@ -31,7 +34,7 @@ exports[`AST Fixtures legacy-fixtures declare module AST Alignment - AST 1`] = `
             end: { column: 18, line: 3 },
           },
         },
--       kind: 'module',
+        kind: 'module',
 
         range: [73, 94],
         loc: {

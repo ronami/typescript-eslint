@@ -6,12 +6,14 @@ Program {
   body: [
     ExportAllDeclaration {
       type: "ExportAllDeclaration",
-      assertions: [
+      attributes: [
         ImportAttribute {
           type: "ImportAttribute",
           key: Identifier {
             type: "Identifier",
+            decorators: [],
             name: "type",
+            optional: false,
 
             range: [29, 33],
             loc: {

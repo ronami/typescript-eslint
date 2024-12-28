@@ -6,10 +6,12 @@ Program {
   body: [
     ExportAllDeclaration {
       type: "ExportAllDeclaration",
-      assertions: [],
+      attributes: [],
       exported: Identifier {
         type: "Identifier",
+        decorators: [],
         name: "foo",
+        optional: false,
 
         range: [85, 88],
         loc: {

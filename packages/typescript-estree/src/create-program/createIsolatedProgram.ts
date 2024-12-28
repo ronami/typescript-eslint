@@ -2,17 +2,19 @@ import debug from 'debug';
 import * as ts from 'typescript';
 
 import type { ParseSettings } from '../parseSettings';
+import type { ASTAndDefiniteProgram } from './shared';
+
 import { getScriptKind } from './getScriptKind';
-import type { ASTAndProgram } from './shared';
 import { createDefaultCompilerOptionsFromExtra } from './shared';
 
 const log = debug('typescript-eslint:typescript-estree:createIsolatedProgram');
 
 /**
- * @param code The code of the file being linted
  * @returns Returns a new source file and program corresponding to the linted code
  */
-function createIsolatedProgram(parseSettings: ParseSettings): ASTAndProgram {
+function createIsolatedProgram(
+  parseSettings: ParseSettings,
+): ASTAndDefiniteProgram {
   log(
     'Getting isolated program in %s mode for: %s',
     parseSettings.jsx ? 'TSX' : 'TS',
@@ -29,11 +31,11 @@ function createIsolatedProgram(parseSettings: ParseSettings): ASTAndProgram {
     getCurrentDirectory() {
       return '';
     },
-    getDirectories() {
-      return [];
-    },
     getDefaultLibFileName() {
       return 'lib.d.ts';
+    },
+    getDirectories() {
+      return [];
     },
 
     // TODO: Support Windows CRLF
@@ -43,7 +45,7 @@ function createIsolatedProgram(parseSettings: ParseSettings): ASTAndProgram {
     getSourceFile(filename: string) {
       return ts.createSourceFile(
         filename,
-        parseSettings.code,
+        parseSettings.codeFullText,
         ts.ScriptTarget.Latest,
         /* setParentNodes */ true,
         getScriptKind(parseSettings.filePath, parseSettings.jsx),
@@ -63,9 +65,10 @@ function createIsolatedProgram(parseSettings: ParseSettings): ASTAndProgram {
   const program = ts.createProgram(
     [parseSettings.filePath],
     {
+      jsDocParsingMode: parseSettings.jsDocParsingMode,
+      jsx: parseSettings.jsx ? ts.JsxEmit.Preserve : undefined,
       noResolve: true,
       target: ts.ScriptTarget.Latest,
-      jsx: parseSettings.jsx ? ts.JsxEmit.Preserve : undefined,
       ...createDefaultCompilerOptionsFromExtra(parseSettings),
     },
     compilerHost,

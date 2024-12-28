@@ -1,55 +1,55 @@
+import type Monaco from 'monaco-editor';
+
 import Link from '@docusaurus/Link';
 import IconExternalLink from '@theme/Icon/ExternalLink';
 import clsx from 'clsx';
-import type Monaco from 'monaco-editor';
 import React, { useEffect, useState } from 'react';
 
-import styles from './ErrorsViewer.module.css';
+import type { AlertBlockProps } from './layout/AlertBlock';
 import type { ErrorGroup, ErrorItem } from './types';
 
+import styles from './ErrorsViewer.module.css';
+import AlertBlock from './layout/AlertBlock';
+
 export interface ErrorsViewerProps {
-  readonly value?: ErrorGroup[] | Error;
+  readonly value?: ErrorGroup[];
 }
 
 export interface ErrorViewerProps {
-  readonly value: Error;
   readonly title: string;
   readonly type: AlertBlockProps['type'];
+  readonly value: Error;
 }
 
-interface AlertBlockProps {
-  readonly type: 'danger' | 'warning' | 'note' | 'info' | 'success';
-  readonly children: React.ReactNode;
-  readonly fixer?: boolean;
-}
-
-interface ErrorBlockProps {
+export interface ErrorBlockProps {
+  readonly isLocked: boolean;
   readonly item: ErrorItem;
   readonly setIsLocked: (value: boolean) => void;
-  readonly isLocked: boolean;
 }
 
 export interface FixButtonProps {
+  readonly disabled: boolean;
   readonly fix: () => void;
   readonly setIsLocked: (value: boolean) => void;
-  readonly disabled: boolean;
 }
 
 function severityClass(
   severity: Monaco.MarkerSeverity,
 ): AlertBlockProps['type'] {
   switch (severity) {
-    case 8:
-      return 'danger';
-    case 4:
-      return 'warning';
+    /* eslint-disable @typescript-eslint/no-unsafe-enum-comparison -- Monaco is imported as a type */
     case 2:
       return 'note';
+    case 4:
+      return 'warning';
+    case 8:
+      return 'danger';
+    /* eslint-enable @typescript-eslint/no-unsafe-enum-comparison */
   }
   return 'info';
 }
 
-function FixButton(props: FixButtonProps): JSX.Element {
+function FixButton(props: FixButtonProps): React.JSX.Element {
   return (
     <button
       className="button button--primary button--sm"
@@ -64,25 +64,17 @@ function FixButton(props: FixButtonProps): JSX.Element {
   );
 }
 
-function AlertBlock(props: AlertBlockProps): JSX.Element {
-  return (
-    <div className={`admonition alert alert--${props.type}`}>
-      <div className="admonition-content">{props.children}</div>
-    </div>
-  );
-}
-
 function ErrorBlock({
+  isLocked,
   item,
   setIsLocked,
-  isLocked,
-}: ErrorBlockProps): JSX.Element {
+}: ErrorBlockProps): React.JSX.Element {
   return (
     <AlertBlock type={severityClass(item.severity)}>
       <div className={clsx(!!item.fixer && styles.fixerContainer)}>
-        <div>
+        <pre className={styles.errorPre}>
           {item.message} {item.location}
-        </div>
+        </pre>
         {item.fixer && (
           <FixButton
             disabled={isLocked}
@@ -95,8 +87,8 @@ function ErrorBlock({
         <div>
           {item.suggestions.map((fixer, index) => (
             <div
-              key={index}
               className={clsx(styles.fixerContainer, styles.fixer)}
+              key={index}
             >
               <span>&gt; {fixer.message}</span>
               <FixButton
@@ -112,21 +104,11 @@ function ErrorBlock({
   );
 }
 
-function SuccessBlock(): JSX.Element {
-  return (
-    <AlertBlock type="success">
-      <div className={styles.fixerContainer}>
-        <div>All is ok!</div>
-      </div>
-    </AlertBlock>
-  );
-}
-
 export function ErrorViewer({
-  value,
   title,
   type,
-}: ErrorViewerProps): JSX.Element {
+  value,
+}: ErrorViewerProps): React.JSX.Element {
   return (
     <div className={styles.list}>
       <div className="margin-top--md">
@@ -134,28 +116,26 @@ export function ErrorViewer({
           <div className={styles.fixerContainer}>
             <h4>{title}</h4>
           </div>
-          {type === 'danger' ? value.stack : value.message}
+          <pre className={styles.errorPre}>
+            {type === 'danger' ? value.stack : value.message}
+          </pre>
         </AlertBlock>
       </div>
     </div>
   );
 }
 
-export function ErrorsViewer({ value }: ErrorsViewerProps): JSX.Element {
+export function ErrorsViewer({ value }: ErrorsViewerProps): React.JSX.Element {
   const [isLocked, setIsLocked] = useState(false);
 
   useEffect(() => {
     setIsLocked(false);
   }, [value]);
 
-  if (value && !Array.isArray(value)) {
-    return <ErrorViewer type="danger" title="Internal error" value={value} />;
-  }
-
   return (
     <div className={styles.list}>
       {value?.length ? (
-        value.map(({ group, uri, items }) => {
+        value.map(({ group, items, uri }) => {
           return (
             <div className="margin-top--md" key={group}>
               <h4>
@@ -164,25 +144,28 @@ export function ErrorsViewer({ value }: ErrorsViewerProps): JSX.Element {
                   <>
                     {' - '}
                     <Link href={uri} target="_blank">
-                      docs <IconExternalLink width={13.5} height={13.5} />
+                      docs <IconExternalLink height={13.5} width={13.5} />
                     </Link>
                   </>
                 )}
               </h4>
               {items.map((item, index) => (
-                <ErrorBlock
-                  isLocked={isLocked}
-                  setIsLocked={setIsLocked}
-                  item={item}
-                  key={index}
-                />
+                <div className="margin-bottom--sm" key={index}>
+                  <ErrorBlock
+                    isLocked={isLocked}
+                    item={item}
+                    setIsLocked={setIsLocked}
+                  />
+                </div>
               ))}
             </div>
           );
         })
       ) : (
         <div className="margin-top--md">
-          <SuccessBlock />
+          <AlertBlock type="success">
+            <div>All is ok!</div>
+          </AlertBlock>
         </div>
       )}
     </div>

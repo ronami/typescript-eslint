@@ -20,9 +20,13 @@ exports[`AST Fixtures declaration TSModuleDeclaration namespace-id-identifier AS
             end: { column: 14, line: 1 },
           },
         },
+-       declare: false,
+-       global: false,
         id: Identifier {
           type: 'Identifier',
+-         decorators: Array [],
           name: 'F',
+-         optional: false,
 
           range: [10, 11],
           loc: {
@@ -30,7 +34,7 @@ exports[`AST Fixtures declaration TSModuleDeclaration namespace-id-identifier AS
             end: { column: 11, line: 1 },
           },
         },
--       kind: 'namespace',
+        kind: 'namespace',
 
         range: [0, 14],
         loc: {

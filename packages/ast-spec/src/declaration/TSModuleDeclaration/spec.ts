@@ -3,23 +3,37 @@ import type { BaseNode } from '../../base/BaseNode';
 import type { Identifier } from '../../expression/Identifier/spec';
 import type { StringLiteral } from '../../expression/literal/StringLiteral/spec';
 import type { TSModuleBlock } from '../../special/TSModuleBlock/spec';
-import type { Modifier } from '../../unions/Modifier';
+import type { TSQualifiedName } from '../../type/spec';
+import type { Literal } from '../../unions/Literal';
 
 export type TSModuleDeclarationKind = 'global' | 'module' | 'namespace';
 
-/*
-TODO(#4966) - we currently emit this due to bad parser handling of nested modules
-namespace Foo.Bar {}
-^^^^^^^^^^^^^^^^^^^^ TSModuleDeclaration
-              ^^^^^^ TSModuleDeclaration
-                  ^^ TSModuleBlock
-
-This should instead emit a TSQualifiedName for the `id` and not emit an inner TSModuleDeclaration
-*/
-type ModuleBody_TODOFixThis = TSModuleBlock | TSModuleDeclaration;
-
 interface TSModuleDeclarationBase extends BaseNode {
   type: AST_NODE_TYPES.TSModuleDeclaration;
+  /**
+   * The body of the module.
+   * This can only be `undefined` for the code `declare module 'mod';`
+   */
+  body?: TSModuleBlock;
+  /**
+   * Whether the module is `declare`d
+   * @example
+   * ```ts
+   * declare namespace F {}
+   * ```
+   */
+  declare: boolean;
+  // TODO - remove this in the next major (we have `.kind` now)
+  /**
+   * Whether this is a global declaration
+   * @example
+   * ```ts
+   * declare global {}
+   * ```
+   *
+   * @deprecated Use {@link kind} instead
+   */
+  global: boolean;
   /**
    * The name of the module
    * ```
@@ -28,110 +42,93 @@ interface TSModuleDeclarationBase extends BaseNode {
    * module 'a' {}
    * ```
    */
-  id: Identifier | StringLiteral;
-  /**
-   * The body of the module.
-   * This can only be `undefined` for the code `declare module 'mod';`
-   * This will be a `TSModuleDeclaration` if the name is "nested" (`Foo.Bar`).
-   */
-  body?: ModuleBody_TODOFixThis;
-  /**
-   * Whether this is a global declaration
-   * ```
-   * declare global {}
-   * ```
-   */
-  // TODO - remove this in the next major (we have `.kind` now)
-  global?: boolean;
-  /**
-   * Whether the module is `declare`d
-   * ```
-   * declare namespace F {}
-   * ```
-   */
-  // TODO(#5020) - make this `false` if it is not `declare`d
-  declare?: boolean;
-  // TODO(#4759) - breaking change remove this
-  modifiers?: Modifier[];
+  id: Identifier | Literal | TSQualifiedName;
 
   /**
    * The keyword used to define this module declaration
-   * ```
+   * @example
+   * ```ts
    * namespace Foo {}
    * ^^^^^^^^^
    *
    * module 'foo' {}
    * ^^^^^^
    *
-   * declare global {}
-   *         ^^^^^^
+   * global {}
+   * ^^^^^^
    * ```
    */
   kind: TSModuleDeclarationKind;
 }
 
 export interface TSModuleDeclarationNamespace extends TSModuleDeclarationBase {
+  body: TSModuleBlock;
+  id: Identifier | TSQualifiedName;
   kind: 'namespace';
-  // namespaces cannot have literal IDs
-  id: Identifier;
-  // namespaces must always have a body
-  body: ModuleBody_TODOFixThis;
-
-  // TODO - remove this in the next major (we have `.kind` now)
-  global?: undefined;
 }
 
 export interface TSModuleDeclarationGlobal extends TSModuleDeclarationBase {
-  kind: 'global';
-  // cannot have a nested namespace for global module augmentation
-  // cannot have `declare global;`
   body: TSModuleBlock;
-  // this will always be an Identifier with name `global`
+  /**
+   * This will always be an Identifier with name `global`
+   */
   id: Identifier;
-
-  // note - it's not syntactically required to have `declare`, but it semantically required
-
-  // TODO - remove this in the next major (we have `.kind` now)
-  global: true;
+  kind: 'global';
 }
 
 interface TSModuleDeclarationModuleBase extends TSModuleDeclarationBase {
   kind: 'module';
-
-  // TODO - remove this in the next major (we have `.kind` now)
-  global?: undefined;
 }
 
-export type TSModuleDeclarationModule =
-  | TSModuleDeclarationModuleWithIdentifierId
-  | TSModuleDeclarationModuleWithStringId;
+/**
+ * A string module declaration that is not declared:
+ * ```
+ * module 'foo' {}
+ * ```
+ */
+export interface TSModuleDeclarationModuleWithStringIdNotDeclared
+  extends TSModuleDeclarationModuleBase {
+  body: TSModuleBlock;
+  declare: false;
+  id: StringLiteral;
+  kind: 'module';
+}
+/**
+ * A string module declaration that is declared:
+ * ```
+ * declare module 'foo' {}
+ * declare module 'foo';
+ * ```
+ */
+export interface TSModuleDeclarationModuleWithStringIdDeclared
+  extends TSModuleDeclarationModuleBase {
+  body?: TSModuleBlock;
+  declare: true;
+  id: StringLiteral;
+  kind: 'module';
+}
+/**
+ * The legacy module declaration, replaced with namespace declarations.
+ * ```
+ * module A {}
+ * ```
+ */
+export interface TSModuleDeclarationModuleWithIdentifierId
+  extends TSModuleDeclarationModuleBase {
+  // Maybe not worth fixing since it's legacy
+  body: TSModuleBlock;
+  id: Identifier;
+  // TODO: we emit the wrong AST for `module A.B {}`
+  // https://github.com/typescript-eslint/typescript-eslint/pull/6272 only fixed namespaces
+  kind: 'module';
+}
+
 export type TSModuleDeclarationModuleWithStringId =
   | TSModuleDeclarationModuleWithStringIdDeclared
   | TSModuleDeclarationModuleWithStringIdNotDeclared;
-export interface TSModuleDeclarationModuleWithStringIdNotDeclared
-  extends TSModuleDeclarationModuleBase {
-  kind: 'module';
-  id: StringLiteral;
-  declare: false;
-  // cannot have nested namespaces with a string ID, must have a body
-  body: TSModuleBlock;
-}
-export interface TSModuleDeclarationModuleWithStringIdDeclared
-  extends TSModuleDeclarationModuleBase {
-  kind: 'module';
-  id: StringLiteral;
-  declare: true;
-  // cannot have nested namespaces with a string ID, might not have a body
-  body?: TSModuleBlock;
-}
-export interface TSModuleDeclarationModuleWithIdentifierId
-  extends TSModuleDeclarationModuleBase {
-  kind: 'module';
-  id: Identifier;
-  // modules with an Identifier must always have a body
-  body: ModuleBody_TODOFixThis;
-}
-
+export type TSModuleDeclarationModule =
+  | TSModuleDeclarationModuleWithIdentifierId
+  | TSModuleDeclarationModuleWithStringId;
 export type TSModuleDeclaration =
   | TSModuleDeclarationGlobal
   | TSModuleDeclarationModule

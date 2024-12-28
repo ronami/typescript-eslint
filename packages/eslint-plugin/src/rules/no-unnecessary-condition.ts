@@ -1,13 +1,7 @@
 import type { TSESTree } from '@typescript-eslint/utils';
+
 import { AST_NODE_TYPES, AST_TOKEN_TYPES } from '@typescript-eslint/utils';
-import {
-  getCallSignaturesOfType,
-  isBooleanLiteralType,
-  isFalsyType,
-  isLiteralType,
-  isStrictCompilerOptionEnabled,
-  unionTypeParts,
-} from 'tsutils';
+import * as tsutils from 'ts-api-utils';
 import * as ts from 'typescript';
 
 import {
@@ -16,6 +10,7 @@ import {
   getParserServices,
   getTypeName,
   getTypeOfPropertyOfName,
+  isArrayMethodCallWithPredicate,
   isIdentifier,
   isNullableType,
   isTypeAnyType,
@@ -24,21 +19,65 @@ import {
   nullThrows,
   NullThrowsReasons,
 } from '../util';
+import {
+  findTruthinessAssertedArgument,
+  findTypeGuardAssertedArgument,
+} from '../util/assertionFunctionUtils';
 
 // Truthiness utilities
 // #region
+const valueIsPseudoBigInt = (
+  value: number | string | ts.PseudoBigInt,
+): value is ts.PseudoBigInt => {
+  return typeof value === 'object';
+};
+
+const getValueOfLiteralType = (
+  type: ts.LiteralType,
+): bigint | number | string => {
+  if (valueIsPseudoBigInt(type.value)) {
+    return pseudoBigIntToBigInt(type.value);
+  }
+  return type.value;
+};
+
+const isFalsyBigInt = (type: ts.Type): boolean => {
+  return (
+    tsutils.isLiteralType(type) &&
+    valueIsPseudoBigInt(type.value) &&
+    !getValueOfLiteralType(type)
+  );
+};
 const isTruthyLiteral = (type: ts.Type): boolean =>
-  isBooleanLiteralType(type, true) || (isLiteralType(type) && !!type.value);
+  tsutils.isTrueLiteralType(type) ||
+  (type.isLiteral() && !!getValueOfLiteralType(type));
 
 const isPossiblyFalsy = (type: ts.Type): boolean =>
-  unionTypeParts(type)
+  tsutils
+    .unionTypeParts(type)
+    // Intersections like `string & {}` can also be possibly falsy,
+    // requiring us to look into the intersection.
+    .flatMap(type => tsutils.intersectionTypeParts(type))
     // PossiblyFalsy flag includes literal values, so exclude ones that
     // are definitely truthy
     .filter(t => !isTruthyLiteral(t))
     .some(type => isTypeFlagSet(type, ts.TypeFlags.PossiblyFalsy));
 
 const isPossiblyTruthy = (type: ts.Type): boolean =>
-  unionTypeParts(type).some(type => !isFalsyType(type));
+  tsutils
+    .unionTypeParts(type)
+    .map(type => tsutils.intersectionTypeParts(type))
+    .some(intersectionParts =>
+      // It is possible to define intersections that are always falsy,
+      // like `"" & { __brand: string }`.
+      intersectionParts.every(
+        type =>
+          !tsutils.isFalsyType(type) &&
+          // below is a workaround for ts-api-utils bug
+          // see https://github.com/JoshuaKGoldberg/ts-api-utils/issues/544
+          !isFalsyBigInt(type),
+      ),
+    );
 
 // Nullish utilities
 const nullishFlag = ts.TypeFlags.Undefined | ts.TypeFlags.Null;
@@ -46,40 +85,111 @@ const isNullishType = (type: ts.Type): boolean =>
   isTypeFlagSet(type, nullishFlag);
 
 const isPossiblyNullish = (type: ts.Type): boolean =>
-  unionTypeParts(type).some(isNullishType);
+  tsutils.unionTypeParts(type).some(isNullishType);
 
 const isAlwaysNullish = (type: ts.Type): boolean =>
-  unionTypeParts(type).every(isNullishType);
+  tsutils.unionTypeParts(type).every(isNullishType);
 
-// isLiteralType only covers numbers and strings, this is a more exhaustive check.
-const isLiteral = (type: ts.Type): boolean =>
-  isBooleanLiteralType(type, true) ||
-  isBooleanLiteralType(type, false) ||
-  type.flags === ts.TypeFlags.Undefined ||
-  type.flags === ts.TypeFlags.Null ||
-  type.flags === ts.TypeFlags.Void ||
-  isLiteralType(type);
+function toStaticValue(
+  type: ts.Type,
+):
+  | { value: bigint | boolean | number | string | null | undefined }
+  | undefined {
+  // type.isLiteral() only covers numbers/bigints and strings, hence the rest of the branches.
+  if (tsutils.isBooleanLiteralType(type)) {
+    // Using `type.intrinsicName` instead of `type.value` because `type.value`
+    // is `undefined`, contrary to what the type guard tells us.
+    // See https://github.com/JoshuaKGoldberg/ts-api-utils/issues/528
+    return { value: type.intrinsicName === 'true' };
+  }
+  if (type.flags === ts.TypeFlags.Undefined) {
+    return { value: undefined };
+  }
+  if (type.flags === ts.TypeFlags.Null) {
+    return { value: null };
+  }
+  if (type.isLiteral()) {
+    return { value: getValueOfLiteralType(type) };
+  }
+
+  return undefined;
+}
+
+function pseudoBigIntToBigInt(value: ts.PseudoBigInt): bigint {
+  return BigInt((value.negative ? '-' : '') + value.base10Value);
+}
+
+const BOOL_OPERATORS = new Set([
+  '<',
+  '>',
+  '<=',
+  '>=',
+  '==',
+  '===',
+  '!=',
+  '!==',
+] as const);
+
+type BoolOperator = typeof BOOL_OPERATORS extends Set<infer T> ? T : never;
+
+function isBoolOperator(operator: string): operator is BoolOperator {
+  return (BOOL_OPERATORS as Set<string>).has(operator);
+}
+
+function booleanComparison(
+  left: unknown,
+  operator: BoolOperator,
+  right: unknown,
+): boolean {
+  switch (operator) {
+    case '!=':
+      // eslint-disable-next-line eqeqeq -- intentionally comparing with loose equality
+      return left != right;
+    case '!==':
+      return left !== right;
+    case '<':
+      // @ts-expect-error: we don't care if the comparison seems unintentional.
+      return left < right;
+    case '<=':
+      // @ts-expect-error: we don't care if the comparison seems unintentional.
+      return left <= right;
+    case '==':
+      // eslint-disable-next-line eqeqeq -- intentionally comparing with loose equality
+      return left == right;
+    case '===':
+      return left === right;
+    case '>':
+      // @ts-expect-error: we don't care if the comparison seems unintentional.
+      return left > right;
+    case '>=':
+      // @ts-expect-error: we don't care if the comparison seems unintentional.
+      return left >= right;
+  }
+}
+
 // #endregion
 
 export type Options = [
   {
     allowConstantLoopConditions?: boolean;
     allowRuleToRunWithoutStrictNullChecksIKnowWhatIAmDoing?: boolean;
+    checkTypePredicates?: boolean;
   },
 ];
 
 export type MessageId =
-  | 'alwaysTruthy'
   | 'alwaysFalsy'
-  | 'alwaysTruthyFunc'
   | 'alwaysFalsyFunc'
-  | 'neverNullish'
   | 'alwaysNullish'
-  | 'literalBooleanExpression'
-  | 'noOverlapBooleanExpression'
+  | 'alwaysTruthy'
+  | 'alwaysTruthyFunc'
+  | 'comparisonBetweenLiteralTypes'
   | 'never'
+  | 'neverNullish'
   | 'neverOptionalChain'
-  | 'noStrictNullCheck';
+  | 'noOverlapBooleanExpression'
+  | 'noStrictNullCheck'
+  | 'typeGuardAlreadyIsType';
 
 export default createRule<Options, MessageId>({
   name: 'no-unnecessary-condition',
@@ -91,50 +201,58 @@ export default createRule<Options, MessageId>({
       recommended: 'strict',
       requiresTypeChecking: true,
     },
+    fixable: 'code',
+    messages: {
+      alwaysFalsy: 'Unnecessary conditional, value is always falsy.',
+      alwaysFalsyFunc:
+        'This callback should return a conditional, but return is always falsy.',
+      alwaysNullish:
+        'Unnecessary conditional, left-hand side of `??` operator is always `null` or `undefined`.',
+      alwaysTruthy: 'Unnecessary conditional, value is always truthy.',
+      alwaysTruthyFunc:
+        'This callback should return a conditional, but return is always truthy.',
+      comparisonBetweenLiteralTypes:
+        'Unnecessary conditional, comparison is always {{trueOrFalse}}, since `{{left}} {{operator}} {{right}}` is {{trueOrFalse}}.',
+      never: 'Unnecessary conditional, value is `never`.',
+      neverNullish:
+        'Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined.',
+      neverOptionalChain: 'Unnecessary optional chain on a non-nullish value.',
+      noOverlapBooleanExpression:
+        'Unnecessary conditional, the types have no overlap.',
+      noStrictNullCheck:
+        'This rule requires the `strictNullChecks` compiler option to be turned on to function correctly.',
+      typeGuardAlreadyIsType:
+        'Unnecessary conditional, expression already has the type being checked by the {{typeGuardOrAssertionFunction}}.',
+    },
     schema: [
       {
         type: 'object',
+        additionalProperties: false,
         properties: {
           allowConstantLoopConditions: {
+            type: 'boolean',
             description:
               'Whether to ignore constant loop conditions, such as `while (true)`.',
-            type: 'boolean',
           },
           allowRuleToRunWithoutStrictNullChecksIKnowWhatIAmDoing: {
+            type: 'boolean',
             description:
               'Whether to not error when running with a tsconfig that has strictNullChecks turned.',
+          },
+          checkTypePredicates: {
             type: 'boolean',
+            description:
+              'Whether to check the asserted argument of a type predicate function for unnecessary conditions',
           },
         },
-        additionalProperties: false,
       },
     ],
-    fixable: 'code',
-    messages: {
-      alwaysTruthy: 'Unnecessary conditional, value is always truthy.',
-      alwaysFalsy: 'Unnecessary conditional, value is always falsy.',
-      alwaysTruthyFunc:
-        'This callback should return a conditional, but return is always truthy.',
-      alwaysFalsyFunc:
-        'This callback should return a conditional, but return is always falsy.',
-      neverNullish:
-        'Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined.',
-      alwaysNullish:
-        'Unnecessary conditional, left-hand side of `??` operator is always `null` or `undefined`.',
-      literalBooleanExpression:
-        'Unnecessary conditional, both sides of the expression are literal values.',
-      noOverlapBooleanExpression:
-        'Unnecessary conditional, the types have no overlap.',
-      never: 'Unnecessary conditional, value is `never`.',
-      neverOptionalChain: 'Unnecessary optional chain on a non-nullish value.',
-      noStrictNullCheck:
-        'This rule requires the `strictNullChecks` compiler option to be turned on to function correctly.',
-    },
   },
   defaultOptions: [
     {
       allowConstantLoopConditions: false,
       allowRuleToRunWithoutStrictNullChecksIKnowWhatIAmDoing: false,
+      checkTypePredicates: false,
     },
   ],
   create(
@@ -143,16 +261,21 @@ export default createRule<Options, MessageId>({
       {
         allowConstantLoopConditions,
         allowRuleToRunWithoutStrictNullChecksIKnowWhatIAmDoing,
+        checkTypePredicates,
       },
     ],
   ) {
-    const service = getParserServices(context);
-    const checker = service.program.getTypeChecker();
-    const sourceCode = context.getSourceCode();
-    const compilerOptions = service.program.getCompilerOptions();
-    const isStrictNullChecks = isStrictCompilerOptionEnabled(
+    const services = getParserServices(context);
+    const checker = services.program.getTypeChecker();
+
+    const compilerOptions = services.program.getCompilerOptions();
+    const isStrictNullChecks = tsutils.isStrictCompilerOptionEnabled(
       compilerOptions,
       'strictNullChecks',
+    );
+    const isNoUncheckedIndexedAccess = tsutils.isCompilerOptionEnabled(
+      compilerOptions,
+      'noUncheckedIndexedAccess',
     );
 
     if (
@@ -161,25 +284,25 @@ export default createRule<Options, MessageId>({
     ) {
       context.report({
         loc: {
-          start: { line: 0, column: 0 },
-          end: { line: 0, column: 0 },
+          start: { column: 0, line: 0 },
+          end: { column: 0, line: 0 },
         },
         messageId: 'noStrictNullCheck',
       });
     }
 
-    function getNodeType(node: TSESTree.Node): ts.Type {
-      const tsNode = service.esTreeNodeToTSNodeMap.get(node);
-      return getConstrainedTypeAtLocation(checker, tsNode);
+    function nodeIsArrayType(node: TSESTree.Expression): boolean {
+      const nodeType = getConstrainedTypeAtLocation(services, node);
+      return tsutils
+        .unionTypeParts(nodeType)
+        .some(part => checker.isArrayType(part));
     }
 
-    function nodeIsArrayType(node: TSESTree.Expression): boolean {
-      const nodeType = getNodeType(node);
-      return checker.isArrayType(nodeType);
-    }
     function nodeIsTupleType(node: TSESTree.Expression): boolean {
-      const nodeType = getNodeType(node);
-      return checker.isTupleType(nodeType);
+      const nodeType = getConstrainedTypeAtLocation(services, node);
+      return tsutils
+        .unionTypeParts(nodeType)
+        .some(part => checker.isTupleType(part));
     }
 
     function isArrayIndexExpression(node: TSESTree.Expression): boolean {
@@ -196,26 +319,54 @@ export default createRule<Options, MessageId>({
       );
     }
 
+    function isNullableMemberExpression(
+      node: TSESTree.MemberExpression,
+    ): boolean {
+      const objectType = services.getTypeAtLocation(node.object);
+      if (node.computed) {
+        const propertyType = services.getTypeAtLocation(node.property);
+        return isNullablePropertyType(objectType, propertyType);
+      }
+      const property = node.property;
+
+      // Get the actual property name, to account for private properties (this.#prop).
+      const propertyName = context.sourceCode.getText(property);
+
+      const propertyType = objectType
+        .getProperties()
+        .find(prop => prop.name === propertyName);
+
+      if (
+        propertyType &&
+        tsutils.isSymbolFlagSet(propertyType, ts.SymbolFlags.Optional)
+      ) {
+        return true;
+      }
+
+      return false;
+    }
+
     /**
      * Checks if a conditional node is necessary:
      * if the type of the node is always true or always false, it's not necessary.
      */
     function checkNode(
-      node: TSESTree.Expression,
+      expression: TSESTree.Expression,
       isUnaryNotArgument = false,
+      node = expression,
     ): void {
       // Check if the node is Unary Negation expression and handle it
       if (
-        node.type === AST_NODE_TYPES.UnaryExpression &&
-        node.operator === '!'
+        expression.type === AST_NODE_TYPES.UnaryExpression &&
+        expression.operator === '!'
       ) {
-        return checkNode(node.argument, true);
+        return checkNode(expression.argument, !isUnaryNotArgument, node);
       }
 
       // Since typescript array index signature types don't represent the
       //  possibility of out-of-bounds access, if we're indexing into an array
       //  just skip the check, to avoid false positives
-      if (isArrayIndexExpression(node)) {
+      if (isArrayIndexExpression(expression)) {
         return;
       }
 
@@ -226,23 +377,25 @@ export default createRule<Options, MessageId>({
       //  boolean checks if we inspect the right here, it'll usually be a constant condition on purpose.
       // In this case it's better to inspect the type of the expression as a whole.
       if (
-        node.type === AST_NODE_TYPES.LogicalExpression &&
-        node.operator !== '??'
+        expression.type === AST_NODE_TYPES.LogicalExpression &&
+        expression.operator !== '??'
       ) {
-        return checkNode(node.right);
+        return checkNode(expression.right);
       }
 
-      const type = getNodeType(node);
+      const type = getConstrainedTypeAtLocation(services, expression);
 
       // Conditional is always necessary if it involves:
       //    `any` or `unknown` or a naked type variable
       if (
-        unionTypeParts(type).some(
-          part =>
-            isTypeAnyType(part) ||
-            isTypeUnknownType(part) ||
-            isTypeFlagSet(part, ts.TypeFlags.TypeVariable),
-        )
+        tsutils
+          .unionTypeParts(type)
+          .some(
+            part =>
+              isTypeAnyType(part) ||
+              isTypeUnknownType(part) ||
+              isTypeFlagSet(part, ts.TypeFlags.TypeVariable),
+          )
       ) {
         return;
       }
@@ -262,16 +415,31 @@ export default createRule<Options, MessageId>({
     }
 
     function checkNodeForNullish(node: TSESTree.Expression): void {
-      const type = getNodeType(node);
-      // Conditional is always necessary if it involves `any` or `unknown`
-      if (isTypeAnyType(type) || isTypeUnknownType(type)) {
+      const type = getConstrainedTypeAtLocation(services, node);
+
+      // Conditional is always necessary if it involves `any`, `unknown` or a naked type parameter
+      if (
+        isTypeFlagSet(
+          type,
+          ts.TypeFlags.Any |
+            ts.TypeFlags.Unknown |
+            ts.TypeFlags.TypeParameter |
+            ts.TypeFlags.TypeVariable,
+        )
+      ) {
         return;
       }
 
       let messageId: MessageId | null = null;
       if (isTypeFlagSet(type, ts.TypeFlags.Never)) {
         messageId = 'never';
-      } else if (!isPossiblyNullish(type)) {
+      } else if (
+        !isPossiblyNullish(type) &&
+        !(
+          node.type === AST_NODE_TYPES.MemberExpression &&
+          isNullableMemberExpression(node)
+        )
+      ) {
         // Since typescript array index signature types don't represent the
         //  possibility of out-of-bounds access, if we're indexing into an array
         //  just skip the check, to avoid false positives
@@ -301,31 +469,41 @@ export default createRule<Options, MessageId>({
      * NOTE: It's also unnecessary if the types that don't overlap at all
      *    but that case is handled by the Typescript compiler itself.
      *    Known exceptions:
-     *      * https://github.com/microsoft/TypeScript/issues/32627
-     *      * https://github.com/microsoft/TypeScript/issues/37160 (handled)
+     *      - https://github.com/microsoft/TypeScript/issues/32627
+     *      - https://github.com/microsoft/TypeScript/issues/37160 (handled)
      */
-    const BOOL_OPERATORS = new Set([
-      '<',
-      '>',
-      '<=',
-      '>=',
-      '==',
-      '===',
-      '!=',
-      '!==',
-    ]);
-    function checkIfBinaryExpressionIsNecessaryConditional(
-      node: TSESTree.BinaryExpression,
+    function checkIfBoolExpressionIsNecessaryConditional(
+      node: TSESTree.Node,
+      left: TSESTree.Node,
+      right: TSESTree.Node,
+      operator: BoolOperator,
     ): void {
-      if (!BOOL_OPERATORS.has(node.operator)) {
+      const leftType = getConstrainedTypeAtLocation(services, left);
+      const rightType = getConstrainedTypeAtLocation(services, right);
+
+      const leftStaticValue = toStaticValue(leftType);
+      const rightStaticValue = toStaticValue(rightType);
+
+      if (leftStaticValue != null && rightStaticValue != null) {
+        const conditionIsTrue = booleanComparison(
+          leftStaticValue.value,
+          operator,
+          rightStaticValue.value,
+        );
+
+        context.report({
+          node,
+          messageId: 'comparisonBetweenLiteralTypes',
+          data: {
+            left: checker.typeToString(leftType),
+            operator,
+            right: checker.typeToString(rightType),
+            trueOrFalse: conditionIsTrue ? 'true' : 'false',
+          },
+        });
         return;
       }
-      const leftType = getNodeType(node.left);
-      const rightType = getNodeType(node.right);
-      if (isLiteral(leftType) && isLiteral(rightType)) {
-        context.report({ node, messageId: 'literalBooleanExpression' });
-        return;
-      }
+
       // Workaround for https://github.com/microsoft/TypeScript/issues/37160
       if (isStrictNullChecks) {
         const UNDEFINED = ts.TypeFlags.Undefined;
@@ -336,10 +514,11 @@ export default createRule<Options, MessageId>({
           flag |=
             ts.TypeFlags.Any |
             ts.TypeFlags.Unknown |
-            ts.TypeFlags.TypeParameter;
+            ts.TypeFlags.TypeParameter |
+            ts.TypeFlags.TypeVariable;
 
           // Allow loose comparison to nullish values.
-          if (node.operator === '==' || node.operator === '!=') {
+          if (operator === '==' || operator === '!=') {
             flag |= NULL | UNDEFINED | VOID;
           }
 
@@ -397,7 +576,9 @@ export default createRule<Options, MessageId>({
        */
       if (
         allowConstantLoopConditions &&
-        isBooleanLiteralType(getNodeType(node.test), true)
+        tsutils.isTrueLiteralType(
+          getConstrainedTypeAtLocation(services, node.test),
+        )
       ) {
         return;
       }
@@ -405,32 +586,49 @@ export default createRule<Options, MessageId>({
       checkNode(node.test);
     }
 
-    const ARRAY_PREDICATE_FUNCTIONS = new Set([
-      'filter',
-      'find',
-      'some',
-      'every',
-    ]);
-    function isArrayPredicateFunction(node: TSESTree.CallExpression): boolean {
-      const { callee } = node;
-      return (
-        // looks like `something.filter` or `something.find`
-        callee.type === AST_NODE_TYPES.MemberExpression &&
-        callee.property.type === AST_NODE_TYPES.Identifier &&
-        ARRAY_PREDICATE_FUNCTIONS.has(callee.property.name) &&
-        // and the left-hand side is an array, according to the types
-        (nodeIsArrayType(callee.object) || nodeIsTupleType(callee.object))
-      );
-    }
     function checkCallExpression(node: TSESTree.CallExpression): void {
+      if (checkTypePredicates) {
+        const truthinessAssertedArgument = findTruthinessAssertedArgument(
+          services,
+          node,
+        );
+        if (truthinessAssertedArgument != null) {
+          checkNode(truthinessAssertedArgument);
+        }
+
+        const typeGuardAssertedArgument = findTypeGuardAssertedArgument(
+          services,
+          node,
+        );
+        if (typeGuardAssertedArgument != null) {
+          const typeOfArgument = getConstrainedTypeAtLocation(
+            services,
+            typeGuardAssertedArgument.argument,
+          );
+          if (typeOfArgument === typeGuardAssertedArgument.type) {
+            context.report({
+              node: typeGuardAssertedArgument.argument,
+              messageId: 'typeGuardAlreadyIsType',
+              data: {
+                typeGuardOrAssertionFunction: typeGuardAssertedArgument.asserts
+                  ? 'assertion function'
+                  : 'type guard',
+              },
+            });
+          }
+        }
+      }
+
       // If this is something like arr.filter(x => /*condition*/), check `condition`
-      if (isArrayPredicateFunction(node) && node.arguments.length) {
-        const callback = node.arguments[0]!;
+      if (
+        isArrayMethodCallWithPredicate(context, services, node) &&
+        node.arguments.length
+      ) {
+        const callback = node.arguments[0];
         // Inline defined functions
         if (
-          (callback.type === AST_NODE_TYPES.ArrowFunctionExpression ||
-            callback.type === AST_NODE_TYPES.FunctionExpression) &&
-          callback.body
+          callback.type === AST_NODE_TYPES.ArrowFunctionExpression ||
+          callback.type === AST_NODE_TYPES.FunctionExpression
         ) {
           // Two special cases, where we can directly check the node that's returned:
           // () => something
@@ -451,24 +649,57 @@ export default createRule<Options, MessageId>({
           // (Value to complexity ratio is dubious however)
         }
         // Otherwise just do type analysis on the function as a whole.
-        const returnTypes = getCallSignaturesOfType(getNodeType(callback)).map(
-          sig => sig.getReturnType(),
-        );
-        /* istanbul ignore if */ if (returnTypes.length === 0) {
-          // Not a callable function
+        const returnTypes = tsutils
+          .getCallSignaturesOfType(
+            getConstrainedTypeAtLocation(services, callback),
+          )
+          .map(sig => sig.getReturnType())
+          .map(t => {
+            // TODO: use `getConstraintTypeInfoAtLocation` once it's merged
+            // https://github.com/typescript-eslint/typescript-eslint/pull/10496
+            if (tsutils.isTypeParameter(t)) {
+              return checker.getBaseConstraintOfType(t);
+            }
+
+            return t;
+          });
+
+        if (returnTypes.length === 0) {
+          // Not a callable function, e.g. `any`
           return;
         }
-        // Predicate is always necessary if it involves `any` or `unknown`
-        if (returnTypes.some(t => isTypeAnyType(t) || isTypeUnknownType(t))) {
-          return;
+
+        let hasFalsyReturnTypes = false;
+        let hasTruthyReturnTypes = false;
+
+        for (const type of returnTypes) {
+          // Predicate is always necessary if it involves `any` or `unknown`
+          if (!type || isTypeAnyType(type) || isTypeUnknownType(type)) {
+            return;
+          }
+
+          if (isPossiblyFalsy(type)) {
+            hasFalsyReturnTypes = true;
+          }
+
+          if (isPossiblyTruthy(type)) {
+            hasTruthyReturnTypes = true;
+          }
+
+          // bail early if both a possibly-truthy and a possibly-falsy have been detected
+          if (hasFalsyReturnTypes && hasTruthyReturnTypes) {
+            return;
+          }
         }
-        if (!returnTypes.some(isPossiblyFalsy)) {
+
+        if (!hasFalsyReturnTypes) {
           return context.report({
             node: callback,
             messageId: 'alwaysTruthyFunc',
           });
         }
-        if (!returnTypes.some(isPossiblyTruthy)) {
+
+        if (!hasTruthyReturnTypes) {
           return context.report({
             node: callback,
             messageId: 'alwaysFalsyFunc',
@@ -486,7 +717,7 @@ export default createRule<Options, MessageId>({
     //    ?.y // This access is considered "unnecessary" according to the types
     //  ```
     function optionChainContainsOptionArrayIndex(
-      node: TSESTree.MemberExpression | TSESTree.CallExpression,
+      node: TSESTree.CallExpression | TSESTree.MemberExpression,
     ): boolean {
       const lhsNode =
         node.type === AST_NODE_TYPES.CallExpression ? node.callee : node.object;
@@ -518,16 +749,13 @@ export default createRule<Options, MessageId>({
           propertyType.value.toString(),
         );
         if (propType) {
-          return isNullableType(propType, { allowUndefined: true });
+          return isNullableType(propType);
         }
       }
       const typeName = getTypeName(checker, propertyType);
-      return !!(
-        (typeName === 'string' &&
-          checker.getIndexInfoOfType(objType, ts.IndexKind.String)) ||
-        (typeName === 'number' &&
-          checker.getIndexInfoOfType(objType, ts.IndexKind.Number))
-      );
+      return checker
+        .getIndexInfosOfType(objType)
+        .some(info => getTypeName(checker, info.keyType) === typeName);
     }
 
     // Checks whether a member expression is nullable or not regardless of it's previous node.
@@ -538,15 +766,18 @@ export default createRule<Options, MessageId>({
     //  declare const foo: { bar : { baz: string } } | null
     //  foo?.bar;
     //  ```
-    function isNullableOriginFromPrev(
+    function isMemberExpressionNullableOriginFromObject(
       node: TSESTree.MemberExpression,
     ): boolean {
-      const prevType = getNodeType(node.object);
+      const prevType = getConstrainedTypeAtLocation(services, node.object);
       const property = node.property;
       if (prevType.isUnion() && isIdentifier(property)) {
         const isOwnNullable = prevType.types.some(type => {
           if (node.computed) {
-            const propertyType = getNodeType(node.property);
+            const propertyType = getConstrainedTypeAtLocation(
+              services,
+              node.property,
+            );
             return isNullablePropertyType(type, propertyType);
           }
           const propType = getTypeOfPropertyOfName(
@@ -556,34 +787,58 @@ export default createRule<Options, MessageId>({
           );
 
           if (propType) {
-            return isNullableType(propType, { allowUndefined: true });
+            return isNullableType(propType);
           }
+          const indexInfo = checker.getIndexInfosOfType(type);
 
-          return !!checker.getIndexInfoOfType(type, ts.IndexKind.String);
+          return indexInfo.some(info => {
+            const isStringTypeName =
+              getTypeName(checker, info.keyType) === 'string';
+
+            return (
+              isStringTypeName &&
+              (isNoUncheckedIndexedAccess || isNullableType(info.type))
+            );
+          });
         });
-        return (
-          !isOwnNullable && isNullableType(prevType, { allowUndefined: true })
-        );
+        return !isOwnNullable && isNullableType(prevType);
       }
       return false;
     }
 
+    function isCallExpressionNullableOriginFromCallee(
+      node: TSESTree.CallExpression,
+    ): boolean {
+      const prevType = getConstrainedTypeAtLocation(services, node.callee);
+
+      if (prevType.isUnion()) {
+        const isOwnNullable = prevType.types.some(type => {
+          const signatures = type.getCallSignatures();
+          return signatures.some(sig => isNullableType(sig.getReturnType()));
+        });
+        return !isOwnNullable && isNullableType(prevType);
+      }
+
+      return false;
+    }
+
     function isOptionableExpression(node: TSESTree.Expression): boolean {
-      const type = getNodeType(node);
+      const type = getConstrainedTypeAtLocation(services, node);
       const isOwnNullable =
         node.type === AST_NODE_TYPES.MemberExpression
-          ? !isNullableOriginFromPrev(node)
-          : true;
-      const possiblyVoid = isTypeFlagSet(type, ts.TypeFlags.Void);
+          ? !isMemberExpressionNullableOriginFromObject(node)
+          : node.type === AST_NODE_TYPES.CallExpression
+            ? !isCallExpressionNullableOriginFromCallee(node)
+            : true;
+
       return (
         isTypeFlagSet(type, ts.TypeFlags.Any | ts.TypeFlags.Unknown) ||
-        (isOwnNullable &&
-          (isNullableType(type, { allowUndefined: true }) || possiblyVoid))
+        (isOwnNullable && isNullableType(type))
       );
     }
 
     function checkOptionalChain(
-      node: TSESTree.MemberExpression | TSESTree.CallExpression,
+      node: TSESTree.CallExpression | TSESTree.MemberExpression,
       beforeOperator: TSESTree.Node,
       fix: '' | '.',
     ): void {
@@ -608,7 +863,7 @@ export default createRule<Options, MessageId>({
       }
 
       const questionDotOperator = nullThrows(
-        sourceCode.getTokenAfter(
+        context.sourceCode.getTokenAfter(
           beforeOperator,
           token =>
             token.type === AST_TOKEN_TYPES.Punctuator && token.value === '?.',
@@ -617,8 +872,8 @@ export default createRule<Options, MessageId>({
       );
 
       context.report({
-        node,
         loc: questionDotOperator.loc,
+        node,
         messageId: 'neverOptionalChain',
         fix(fixer) {
           return fixer.replaceText(questionDotOperator, fix);
@@ -641,7 +896,7 @@ export default createRule<Options, MessageId>({
     ): void {
       // Similar to checkLogicalExpressionForUnnecessaryConditionals, since
       // a ||= b is equivalent to a || (a = b)
-      if (['||=', '&&='].includes(node.operator)) {
+      if (['&&=', '||='].includes(node.operator)) {
         checkNode(node.left);
       } else if (node.operator === '??=') {
         checkNodeForNullish(node.left);
@@ -650,16 +905,37 @@ export default createRule<Options, MessageId>({
 
     return {
       AssignmentExpression: checkAssignmentExpression,
-      BinaryExpression: checkIfBinaryExpressionIsNecessaryConditional,
+      BinaryExpression(node): void {
+        const { operator } = node;
+        if (isBoolOperator(operator)) {
+          checkIfBoolExpressionIsNecessaryConditional(
+            node,
+            node.left,
+            node.right,
+            operator,
+          );
+        }
+      },
       CallExpression: checkCallExpression,
+      'CallExpression[optional = true]': checkOptionalCallExpression,
       ConditionalExpression: (node): void => checkNode(node.test),
       DoWhileStatement: checkIfLoopIsNecessaryConditional,
       ForStatement: checkIfLoopIsNecessaryConditional,
       IfStatement: (node): void => checkNode(node.test),
       LogicalExpression: checkLogicalExpressionForUnnecessaryConditionals,
-      WhileStatement: checkIfLoopIsNecessaryConditional,
       'MemberExpression[optional = true]': checkOptionalMemberExpression,
-      'CallExpression[optional = true]': checkOptionalCallExpression,
+      SwitchCase({ parent, test }): void {
+        // only check `case ...:`, not `default:`
+        if (test) {
+          checkIfBoolExpressionIsNecessaryConditional(
+            test,
+            parent.discriminant,
+            test,
+            '===',
+          );
+        }
+      },
+      WhileStatement: checkIfLoopIsNecessaryConditional,
     };
   },
 });

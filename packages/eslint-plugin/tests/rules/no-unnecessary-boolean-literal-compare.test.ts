@@ -1,13 +1,15 @@
+import { noFormat, RuleTester } from '@typescript-eslint/rule-tester';
+
 import rule from '../../src/rules/no-unnecessary-boolean-literal-compare';
-import { getFixturesRootDir, noFormat, RuleTester } from '../RuleTester';
+import { getFixturesRootDir } from '../RuleTester';
 
 const rootDir = getFixturesRootDir();
 const ruleTester = new RuleTester({
-  parser: '@typescript-eslint/parser',
-  parserOptions: {
-    ecmaVersion: 2015,
-    tsconfigRootDir: rootDir,
-    project: './tsconfig.json',
+  languageOptions: {
+    parserOptions: {
+      project: './tsconfig.json',
+      tsconfigRootDir: rootDir,
+    },
   },
 });
 
@@ -54,6 +56,18 @@ ruleTester.run('no-unnecessary-boolean-literal-compare', rule, {
       varTrueOrStringOrUndefined == true;
     `,
     `
+      const test: <T>(someCondition: T) => void = someCondition => {
+        if (someCondition === true) {
+        }
+      };
+    `,
+    `
+      const test: <T>(someCondition: boolean | string) => void = someCondition => {
+        if (someCondition === true) {
+        }
+      };
+    `,
+    `
       declare const varBooleanOrUndefined: boolean | undefined;
       varBooleanOrUndefined === true;
     `,
@@ -68,6 +82,28 @@ ruleTester.run('no-unnecessary-boolean-literal-compare', rule, {
       code: `
         declare const varBooleanOrUndefined: boolean | undefined;
         varBooleanOrUndefined === false;
+      `,
+      options: [{ allowComparingNullableBooleansToTrue: false }],
+    },
+    {
+      code: `
+        const test: <T extends boolean | undefined>(
+          someCondition: T,
+        ) => void = someCondition => {
+          if (someCondition === true) {
+          }
+        };
+      `,
+      options: [{ allowComparingNullableBooleansToFalse: false }],
+    },
+    {
+      code: `
+        const test: <T extends boolean | undefined>(
+          someCondition: T,
+        ) => void = someCondition => {
+          if (someCondition === false) {
+          }
+        };
       `,
       options: [{ allowComparingNullableBooleansToTrue: false }],
     },
@@ -134,12 +170,12 @@ ruleTester.run('no-unnecessary-boolean-literal-compare', rule, {
         if (varTrueOrUndefined === true) {
         }
       `,
-      options: [{ allowComparingNullableBooleansToTrue: false }],
       errors: [
         {
           messageId: 'comparingNullableToTrueDirect',
         },
       ],
+      options: [{ allowComparingNullableBooleansToTrue: false }],
       output: `
         declare const varTrueOrUndefined: true | undefined;
         if (varTrueOrUndefined) {
@@ -152,12 +188,12 @@ ruleTester.run('no-unnecessary-boolean-literal-compare', rule, {
         if (varFalseOrNull !== true) {
         }
       `,
-      options: [{ allowComparingNullableBooleansToTrue: false }],
       errors: [
         {
           messageId: 'comparingNullableToTrueNegated',
         },
       ],
+      options: [{ allowComparingNullableBooleansToTrue: false }],
       output: `
         declare const varFalseOrNull: false | null;
         if (!varFalseOrNull) {
@@ -171,12 +207,12 @@ ruleTester.run('no-unnecessary-boolean-literal-compare', rule, {
         if (varBooleanOrNull === false && otherBoolean) {
         }
       `,
-      options: [{ allowComparingNullableBooleansToFalse: false }],
       errors: [
         {
           messageId: 'comparingNullableToFalse',
         },
       ],
+      options: [{ allowComparingNullableBooleansToFalse: false }],
       output: `
         declare const varBooleanOrNull: boolean | null;
         declare const otherBoolean: boolean;
@@ -191,12 +227,12 @@ ruleTester.run('no-unnecessary-boolean-literal-compare', rule, {
         if (!(varBooleanOrNull === false) || otherBoolean) {
         }
       `,
-      options: [{ allowComparingNullableBooleansToFalse: false }],
       errors: [
         {
           messageId: 'comparingNullableToFalse',
         },
       ],
+      options: [{ allowComparingNullableBooleansToFalse: false }],
       output: `
         declare const varBooleanOrNull: boolean | null;
         declare const otherBoolean: boolean;
@@ -211,12 +247,12 @@ ruleTester.run('no-unnecessary-boolean-literal-compare', rule, {
         if (varTrueOrFalseOrUndefined !== false && !otherBoolean) {
         }
       `,
-      options: [{ allowComparingNullableBooleansToFalse: false }],
       errors: [
         {
           messageId: 'comparingNullableToFalse',
         },
       ],
+      options: [{ allowComparingNullableBooleansToFalse: false }],
       output: `
         declare const varTrueOrFalseOrUndefined: true | false | undefined;
         declare const otherBoolean: boolean;
@@ -477,6 +513,63 @@ ruleTester.run('no-unnecessary-boolean-literal-compare', rule, {
         declare const varBoolean: boolean;
         if (!(varBoolean ?? true)) {
         }
+      `,
+    },
+    {
+      code: `
+        const test: <T extends boolean>(someCondition: T) => void = someCondition => {
+          if (someCondition === true) {
+          }
+        };
+      `,
+      errors: [
+        {
+          messageId: 'direct',
+        },
+      ],
+      output: `
+        const test: <T extends boolean>(someCondition: T) => void = someCondition => {
+          if (someCondition) {
+          }
+        };
+      `,
+    },
+    {
+      code: `
+        const test: <T extends boolean>(someCondition: T) => void = someCondition => {
+          if (!(someCondition !== false)) {
+          }
+        };
+      `,
+      errors: [
+        {
+          messageId: 'negated',
+        },
+      ],
+      output: `
+        const test: <T extends boolean>(someCondition: T) => void = someCondition => {
+          if (!someCondition) {
+          }
+        };
+      `,
+    },
+    {
+      code: `
+        const test: <T extends boolean>(someCondition: T) => void = someCondition => {
+          if (!((someCondition ?? true) !== false)) {
+          }
+        };
+      `,
+      errors: [
+        {
+          messageId: 'negated',
+        },
+      ],
+      output: `
+        const test: <T extends boolean>(someCondition: T) => void = someCondition => {
+          if (!(someCondition ?? true)) {
+          }
+        };
       `,
     },
   ],

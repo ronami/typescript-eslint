@@ -18,12 +18,7 @@
 </p>
 <p align="center">
 <small>
-  See <strong><a href="https://main--typescript-eslint.netlify.app">main--typescript-eslint.netlify.app</a></strong> for documentation on the latest <a href="https://main--typescript-eslint.netlify.app/maintenance/versioning">canary release</a>.
-</small>
-</p>
-<p align="center">
-<small>
-  See <strong><a href="https://v6--typescript-eslint.netlify.app">v6--typescript-eslint.netlify.app</a></strong> for documentation on <a href="https://main--typescript-eslint.netlify.app/blog/announcing-typescript-eslint-v6-beta">upcoming v6 release</a>.
+  See <strong><a href="https://main--typescript-eslint.netlify.app">main--typescript-eslint.netlify.app</a></strong> for documentation on the latest <a href="https://main--typescript-eslint.netlify.app/users/versioning">canary release</a>.
 </small>
 </p>
 <p align="center">
@@ -49,4 +44,4 @@ In addition to submitting code and documentation updates, you can help us sustai
 
 ## License
 
-typescript-eslint inherits from the original TypeScript ESLint Parser license, as the majority of the work began there. It is licensed under a permissive BSD 2-clause license.
+typescript-eslint inherits is licensed under a permissive MIT license.

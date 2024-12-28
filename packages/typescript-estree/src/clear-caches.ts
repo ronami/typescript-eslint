@@ -1,6 +1,12 @@
 import { clearWatchCaches } from './create-program/getWatchProgramsForProjects';
-import { clearProgramCache as clearProgramCacheOriginal } from './parser';
-import { clearTSConfigMatchCache } from './parseSettings/createParseSettings';
+import {
+  clearDefaultProjectMatchedFiles,
+  clearProgramCache as clearProgramCacheOriginal,
+} from './parser';
+import {
+  clearTSConfigMatchCache,
+  clearTSServerProjectService,
+} from './parseSettings/createParseSettings';
 import { clearGlobCache } from './parseSettings/resolveProjectList';
 
 /**
@@ -11,9 +17,11 @@ import { clearGlobCache } from './parseSettings/resolveProjectList';
  * - In custom lint tooling that iteratively lints one project at a time to prevent OOMs.
  */
 export function clearCaches(): void {
+  clearDefaultProjectMatchedFiles();
   clearProgramCacheOriginal();
   clearWatchCaches();
   clearTSConfigMatchCache();
+  clearTSServerProjectService();
   clearGlobCache();
 }
 

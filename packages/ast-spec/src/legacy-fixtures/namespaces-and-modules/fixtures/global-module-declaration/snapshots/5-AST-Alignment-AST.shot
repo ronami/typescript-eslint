@@ -26,9 +26,12 @@ exports[`AST Fixtures legacy-fixtures namespaces-and-modules global-module-decla
                 },
               },
               declare: true,
+-             global: false,
               id: Identifier {
                 type: 'Identifier',
+-               decorators: Array [],
                 name: 'global',
+-               optional: false,
 
                 range: [107, 113],
                 loc: {
@@ -36,7 +39,7 @@ exports[`AST Fixtures legacy-fixtures namespaces-and-modules global-module-decla
                   end: { column: 23, line: 4 },
                 },
               },
--             kind: 'module',
+              kind: 'module',
 
               range: [92, 116],
               loc: {
@@ -57,9 +60,12 @@ exports[`AST Fixtures legacy-fixtures namespaces-and-modules global-module-decla
                 },
               },
               declare: true,
+-             global: false,
               id: Identifier {
                 type: 'Identifier',
+-               decorators: Array [],
                 name: 'global',
+-               optional: false,
 
                 range: [137, 143],
                 loc: {
@@ -67,7 +73,7 @@ exports[`AST Fixtures legacy-fixtures namespaces-and-modules global-module-decla
                   end: { column: 26, line: 5 },
                 },
               },
--             kind: 'namespace',
+              kind: 'namespace',
 
               range: [119, 146],
               loc: {
@@ -87,7 +93,9 @@ exports[`AST Fixtures legacy-fixtures namespaces-and-modules global-module-decla
         global: true,
         id: Identifier {
           type: 'Identifier',
+-         decorators: Array [],
           name: 'global',
+-         optional: false,
 
           range: [81, 87],
           loc: {
@@ -95,7 +103,7 @@ exports[`AST Fixtures legacy-fixtures namespaces-and-modules global-module-decla
             end: { column: 14, line: 3 },
           },
         },
--       kind: 'global',
+        kind: 'global',
 
         range: [73, 148],
         loc: {

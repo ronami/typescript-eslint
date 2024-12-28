@@ -1,21 +1,27 @@
 import type { TSESTree } from '@typescript-eslint/utils';
+
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
-import * as tsutils from 'tsutils';
+import * as tsutils from 'ts-api-utils';
 import * as ts from 'typescript';
 
-import * as util from '../util';
+import {
+  createRule,
+  getConstrainedTypeAtLocation,
+  getParserServices,
+  isStrongPrecedenceNode,
+} from '../util';
 
 type MessageIds =
-  | 'direct'
-  | 'negated'
+  | 'comparingNullableToFalse'
   | 'comparingNullableToTrueDirect'
   | 'comparingNullableToTrueNegated'
-  | 'comparingNullableToFalse';
+  | 'direct'
+  | 'negated';
 
 type Options = [
   {
-    allowComparingNullableBooleansToTrue?: boolean;
     allowComparingNullableBooleansToFalse?: boolean;
+    allowComparingNullableBooleansToTrue?: boolean;
   },
 ];
 
@@ -29,9 +35,10 @@ interface BooleanComparisonWithTypeInformation extends BooleanComparison {
   expressionIsNullableBoolean: boolean;
 }
 
-export default util.createRule<Options, MessageIds>({
+export default createRule<Options, MessageIds>({
   name: 'no-unnecessary-boolean-literal-compare',
   meta: {
+    type: 'suggestion',
     docs: {
       description:
         'Disallow unnecessary equality comparisons against boolean literals',
@@ -40,47 +47,44 @@ export default util.createRule<Options, MessageIds>({
     },
     fixable: 'code',
     messages: {
-      direct:
-        'This expression unnecessarily compares a boolean value to a boolean instead of using it directly.',
-      negated:
-        'This expression unnecessarily compares a boolean value to a boolean instead of negating it.',
+      comparingNullableToFalse:
+        'This expression unnecessarily compares a nullable boolean value to false instead of using the ?? operator to provide a default.',
       comparingNullableToTrueDirect:
         'This expression unnecessarily compares a nullable boolean value to true instead of using it directly.',
       comparingNullableToTrueNegated:
         'This expression unnecessarily compares a nullable boolean value to true instead of negating it.',
-      comparingNullableToFalse:
-        'This expression unnecessarily compares a nullable boolean value to false instead of using the ?? operator to provide a default.',
+      direct:
+        'This expression unnecessarily compares a boolean value to a boolean instead of using it directly.',
+      negated:
+        'This expression unnecessarily compares a boolean value to a boolean instead of negating it.',
     },
     schema: [
       {
         type: 'object',
+        additionalProperties: false,
         properties: {
-          allowComparingNullableBooleansToTrue: {
-            description:
-              'Whether to allow comparisons between nullable boolean variables and `true`.',
-            type: 'boolean',
-          },
           allowComparingNullableBooleansToFalse: {
+            type: 'boolean',
             description:
               'Whether to allow comparisons between nullable boolean variables and `false`.',
+          },
+          allowComparingNullableBooleansToTrue: {
             type: 'boolean',
+            description:
+              'Whether to allow comparisons between nullable boolean variables and `true`.',
           },
         },
-        additionalProperties: false,
       },
     ],
-    type: 'suggestion',
   },
   defaultOptions: [
     {
-      allowComparingNullableBooleansToTrue: true,
       allowComparingNullableBooleansToFalse: true,
+      allowComparingNullableBooleansToTrue: true,
     },
   ],
   create(context, [options]) {
-    const parserServices = util.getParserServices(context);
-    const checker = parserServices.program.getTypeChecker();
-    const sourceCode = context.getSourceCode();
+    const services = getParserServices(context);
 
     function getBooleanComparison(
       node: TSESTree.BinaryExpression,
@@ -90,8 +94,9 @@ export default util.createRule<Options, MessageIds>({
         return undefined;
       }
 
-      const expressionType = checker.getTypeAtLocation(
-        parserServices.esTreeNodeToTSNodeMap.get(comparison.expression),
+      const expressionType = getConstrainedTypeAtLocation(
+        services,
+        comparison.expression,
       );
 
       if (isBooleanType(expressionType)) {
@@ -180,8 +185,8 @@ export default util.createRule<Options, MessageIds>({
         const negated = !comparisonType.isPositive;
 
         return {
-          literalBooleanInComparison,
           expression,
+          literalBooleanInComparison,
           negated,
         };
       }
@@ -200,7 +205,7 @@ export default util.createRule<Options, MessageIds>({
     return {
       BinaryExpression(node): void {
         const comparison = getBooleanComparison(node);
-        if (comparison === undefined) {
+        if (comparison == null) {
           return;
         }
 
@@ -220,22 +225,31 @@ export default util.createRule<Options, MessageIds>({
         }
 
         context.report({
-          fix: function* (fixer) {
+          node,
+          messageId: comparison.expressionIsNullableBoolean
+            ? comparison.literalBooleanInComparison
+              ? comparison.negated
+                ? 'comparingNullableToTrueNegated'
+                : 'comparingNullableToTrueDirect'
+              : 'comparingNullableToFalse'
+            : comparison.negated
+              ? 'negated'
+              : 'direct',
+          *fix(fixer) {
             // 1. isUnaryNegation - parent negation
             // 2. literalBooleanInComparison - is compared to literal boolean
             // 3. negated - is expression negated
 
-            const isUnaryNegation =
-              node.parent != null && nodeIsUnaryNegation(node.parent);
+            const isUnaryNegation = nodeIsUnaryNegation(node.parent);
 
             const shouldNegate =
               comparison.negated !== comparison.literalBooleanInComparison;
 
-            const mutatedNode = isUnaryNegation ? node.parent! : node;
+            const mutatedNode = isUnaryNegation ? node.parent : node;
 
             yield fixer.replaceText(
               mutatedNode,
-              sourceCode.getText(comparison.expression),
+              context.sourceCode.getText(comparison.expression),
             );
 
             // if `isUnaryNegation === literalBooleanInComparison === !negated` is true - negate the expression
@@ -243,7 +257,7 @@ export default util.createRule<Options, MessageIds>({
               yield fixer.insertTextBefore(mutatedNode, '!');
 
               // if the expression `exp` is not a strong precedence node, wrap it in parentheses
-              if (!util.isStrongPrecedenceNode(comparison.expression)) {
+              if (!isStrongPrecedenceNode(comparison.expression)) {
                 yield fixer.insertTextBefore(mutatedNode, '(');
                 yield fixer.insertTextAfter(mutatedNode, ')');
               }
@@ -259,16 +273,6 @@ export default util.createRule<Options, MessageIds>({
               yield fixer.insertTextAfter(mutatedNode, ' ?? true)');
             }
           },
-          messageId: comparison.expressionIsNullableBoolean
-            ? comparison.literalBooleanInComparison
-              ? comparison.negated
-                ? 'comparingNullableToTrueNegated'
-                : 'comparingNullableToTrueDirect'
-              : 'comparingNullableToFalse'
-            : comparison.negated
-            ? 'negated'
-            : 'direct',
-          node,
         });
       },
     };
@@ -282,18 +286,6 @@ interface EqualsKind {
 
 function getEqualsKind(operator: string): EqualsKind | undefined {
   switch (operator) {
-    case '==':
-      return {
-        isPositive: true,
-        isStrict: false,
-      };
-
-    case '===':
-      return {
-        isPositive: true,
-        isStrict: true,
-      };
-
     case '!=':
       return {
         isPositive: false,
@@ -303,6 +295,18 @@ function getEqualsKind(operator: string): EqualsKind | undefined {
     case '!==':
       return {
         isPositive: false,
+        isStrict: true,
+      };
+
+    case '==':
+      return {
+        isPositive: true,
+        isStrict: false,
+      };
+
+    case '===':
+      return {
+        isPositive: true,
         isStrict: true,
       };
 

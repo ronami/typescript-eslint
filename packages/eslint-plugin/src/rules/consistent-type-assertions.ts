@@ -1,83 +1,100 @@
 import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
-import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 
-import * as util from '../util';
+import { AST_NODE_TYPES } from '@typescript-eslint/utils';
+import * as ts from 'typescript';
+
+import {
+  createRule,
+  getOperatorPrecedence,
+  getOperatorPrecedenceForNode,
+  getParserServices,
+  getTextWithParentheses,
+  isParenthesized,
+} from '../util';
+import { getWrappedCode } from '../util/getWrappedCode';
 
 // intentionally mirroring the options
-type MessageIds =
-  | 'as'
+export type MessageIds =
   | 'angle-bracket'
+  | 'as'
   | 'never'
-  | 'unexpectedObjectTypeAssertion'
-  | 'unexpectedArrayTypeAssertion'
+  | 'replaceArrayTypeAssertionWithAnnotation'
+  | 'replaceArrayTypeAssertionWithSatisfies'
   | 'replaceObjectTypeAssertionWithAnnotation'
   | 'replaceObjectTypeAssertionWithSatisfies'
-  | 'replaceArrayTypeAssertionWithAnnotation'
-  | 'replaceArrayTypeAssertionWithSatisfies';
+  | 'unexpectedArrayTypeAssertion'
+  | 'unexpectedObjectTypeAssertion';
 type OptUnion =
   | {
-      assertionStyle: 'as' | 'angle-bracket';
+      assertionStyle: 'angle-bracket' | 'as';
       objectLiteralTypeAssertions?: 'allow' | 'allow-as-parameter' | 'never';
       arrayLiteralTypeAssertions?: 'allow' | 'never';
     }
   | {
       assertionStyle: 'never';
     };
-type Options = [OptUnion];
+export type Options = readonly [OptUnion];
 
-export default util.createRule<Options, MessageIds>({
+export default createRule<Options, MessageIds>({
   name: 'consistent-type-assertions',
   meta: {
     type: 'suggestion',
-    fixable: 'code',
-    hasSuggestions: true,
     docs: {
       description: 'Enforce consistent usage of type assertions',
-      recommended: 'strict',
+      recommended: 'stylistic',
     },
+    fixable: 'code',
+    hasSuggestions: true,
     messages: {
-      as: "Use 'as {{cast}}' instead of '<{{cast}}>'.",
       'angle-bracket': "Use '<{{cast}}>' instead of 'as {{cast}}'.",
+      as: "Use 'as {{cast}}' instead of '<{{cast}}>'.",
       never: 'Do not use any type assertions.',
-      unexpectedObjectTypeAssertion: 'Always prefer const x: T = { ... }.',
-      unexpectedArrayTypeAssertion: 'Always prefer const x: T[] = [ ... ].',
-      replaceObjectTypeAssertionWithAnnotation:
-        'Use const x: {{cast}} = { ... } instead.',
-      replaceObjectTypeAssertionWithSatisfies:
-        'Use const x = { ... } satisfies {{cast}} instead.',
       replaceArrayTypeAssertionWithAnnotation:
         'Use const x: [{cast}] = [ ... ] instead.',
       replaceArrayTypeAssertionWithSatisfies:
         'Use const x = [ ... ] satisfies [{cast}] instead.',
+      replaceObjectTypeAssertionWithAnnotation:
+        'Use const x: {{cast}} = { ... } instead.',
+      replaceObjectTypeAssertionWithSatisfies:
+        'Use const x = { ... } satisfies {{cast}} instead.',
+      unexpectedArrayTypeAssertion: 'Always prefer const x: T[] = [ ... ].',
+      unexpectedObjectTypeAssertion: 'Always prefer const x: T = { ... }.',
     },
     schema: [
       {
         oneOf: [
           {
             type: 'object',
+            additionalProperties: false,
             properties: {
               assertionStyle: {
+                type: 'string',
+                description: 'The expected assertion style to enforce.',
                 enum: ['never'],
               },
             },
-            additionalProperties: false,
             required: ['assertionStyle'],
           },
           {
             type: 'object',
+            additionalProperties: false,
             properties: {
+              arrayLiteralTypeAssertions: {
+                type: 'string',
+                enum: ['allow', 'never'],
+              },
               assertionStyle: {
+                type: 'string',
+                description: 'The expected assertion style to enforce.',
                 enum: ['as', 'angle-bracket'],
               },
               objectLiteralTypeAssertions: {
+                type: 'string',
+                description:
+                  'Whether to always prefer type declarations for object literals used as variable initializers, rather than type assertions.',
                 enum: ['allow', 'allow-as-parameter', 'never'],
               },
-              arrayLiteralTypeAssertions: {
-                enum: ['allow', 'never'],
-              },
             },
-            additionalProperties: false,
-            required: ['assertionStyle'],
           },
         ],
       },
@@ -85,14 +102,12 @@ export default util.createRule<Options, MessageIds>({
   },
   defaultOptions: [
     {
+      arrayLiteralTypeAssertions: 'allow',
       assertionStyle: 'as',
       objectLiteralTypeAssertions: 'allow',
-      arrayLiteralTypeAssertions: 'allow',
     },
   ],
   create(context, [options]) {
-    const sourceCode = context.getSourceCode();
-
     function isConst(node: TSESTree.TypeNode): boolean {
       if (node.type !== AST_NODE_TYPES.TSTypeReference) {
         return false;
@@ -104,30 +119,8 @@ export default util.createRule<Options, MessageIds>({
       );
     }
 
-    function getTextWithParentheses(node: TSESTree.Node): string {
-      // Capture parentheses before and after the node
-      let beforeCount = 0;
-      let afterCount = 0;
-
-      if (util.isParenthesized(node, sourceCode)) {
-        const bodyOpeningParen = sourceCode.getTokenBefore(
-          node,
-          util.isOpeningParenToken,
-        )!;
-        const bodyClosingParen = sourceCode.getTokenAfter(
-          node,
-          util.isClosingParenToken,
-        )!;
-
-        beforeCount = node.range[0] - bodyOpeningParen.range[0];
-        afterCount = bodyClosingParen.range[1] - node.range[1];
-      }
-
-      return sourceCode.getText(node, beforeCount, afterCount);
-    }
-
     function reportIncorrectAssertionType(
-      node: TSESTree.TSTypeAssertion | TSESTree.TSAsExpression,
+      node: TSESTree.TSAsExpression | TSESTree.TSTypeAssertion,
     ): void {
       const messageId = options.assertionStyle;
 
@@ -135,26 +128,62 @@ export default util.createRule<Options, MessageIds>({
       if (isConst(node.typeAnnotation) && messageId === 'never') {
         return;
       }
-
       context.report({
         node,
         messageId,
         data:
           messageId !== 'never'
-            ? { cast: sourceCode.getText(node.typeAnnotation) }
+            ? { cast: context.sourceCode.getText(node.typeAnnotation) }
             : {},
         fix:
           messageId === 'as'
-            ? (fixer): TSESLint.RuleFix[] => [
-                fixer.replaceText(
+            ? (fixer): TSESLint.RuleFix => {
+                // lazily access parserServices to avoid crashing on non TS files (#9860)
+                const tsNode = getParserServices(
+                  context,
+                  true,
+                ).esTreeNodeToTSNodeMap.get(node as TSESTree.TSTypeAssertion);
+
+                const expressionCode = context.sourceCode.getText(
+                  node.expression,
+                );
+                const typeAnnotationCode = context.sourceCode.getText(
+                  node.typeAnnotation,
+                );
+
+                const asPrecedence = getOperatorPrecedence(
+                  ts.SyntaxKind.AsExpression,
+                  ts.SyntaxKind.Unknown,
+                );
+                const parentPrecedence = getOperatorPrecedence(
+                  tsNode.parent.kind,
+                  ts.isBinaryExpression(tsNode.parent)
+                    ? tsNode.parent.operatorToken.kind
+                    : ts.SyntaxKind.Unknown,
+                  ts.isNewExpression(tsNode.parent)
+                    ? tsNode.parent.arguments != null &&
+                        tsNode.parent.arguments.length > 0
+                    : undefined,
+                );
+
+                const expressionPrecedence = getOperatorPrecedenceForNode(
+                  node.expression,
+                );
+
+                const expressionCodeWrapped = getWrappedCode(
+                  expressionCode,
+                  expressionPrecedence,
+                  asPrecedence,
+                );
+
+                const text = `${expressionCodeWrapped} as ${typeAnnotationCode}`;
+                return fixer.replaceText(
                   node,
-                  getTextWithParentheses(node.expression),
-                ),
-                fixer.insertTextAfter(
-                  node,
-                  ` as ${getTextWithParentheses(node.typeAnnotation)}`,
-                ),
-              ]
+                  isParenthesized(node, context.sourceCode)
+                    ? text
+                    : getWrappedCode(text, asPrecedence, parentPrecedence),
+                );
+              }
             : undefined,
       });
     }
@@ -178,38 +207,42 @@ export default util.createRule<Options, MessageIds>({
     }
 
     function getReplacementSuggestions(
-      node: TSESTree.TSTypeAssertion | TSESTree.TSAsExpression,
+      node: TSESTree.TSAsExpression | TSESTree.TSTypeAssertion,
       annotationMessageId: MessageIds,
       satisfiesMessageId: MessageIds,
     ): TSESLint.ReportSuggestionArray<MessageIds> {
       const suggest: TSESLint.ReportSuggestionArray<MessageIds> = [];
       if (
-        node.parent?.type === AST_NODE_TYPES.VariableDeclarator &&
+        node.parent.type === AST_NODE_TYPES.VariableDeclarator &&
         !node.parent.id.typeAnnotation
       ) {
         const { parent } = node;
         suggest.push({
           messageId: annotationMessageId,
-          data: { cast: sourceCode.getText(node.typeAnnotation) },
+          data: { cast: context.sourceCode.getText(node.typeAnnotation) },
           fix: fixer => [
             fixer.insertTextAfter(
               parent.id,
-              `: ${sourceCode.getText(node.typeAnnotation)}`,
+              `: ${context.sourceCode.getText(node.typeAnnotation)}`,
             ),
-            fixer.replaceText(node, getTextWithParentheses(node.expression)),
+            fixer.replaceText(
+              node,
+              getTextWithParentheses(context.sourceCode, node.expression),
+            ),
           ],
         });
       }
       suggest.push({
         messageId: satisfiesMessageId,
-        data: { cast: sourceCode.getText(node.typeAnnotation) },
+        data: { cast: context.sourceCode.getText(node.typeAnnotation) },
         fix: fixer => [
-          fixer.replaceText(node, getTextWithParentheses(node.expression)),
+          fixer.replaceText(
+            node,
+            getTextWithParentheses(context.sourceCode, node.expression),
+          ),
           fixer.insertTextAfter(
             node,
-            ` satisfies ${context
-              .getSourceCode()
-              .getText(node.typeAnnotation)}`,
+            ` satisfies ${context.sourceCode.getText(node.typeAnnotation)}`,
           ),
         ],
       });
@@ -217,7 +250,7 @@ export default util.createRule<Options, MessageIds>({
     }
 
     function checkExpressionForObjectAssertion(
-      node: TSESTree.TSTypeAssertion | TSESTree.TSAsExpression,
+      node: TSESTree.TSAsExpression | TSESTree.TSTypeAssertion,
     ): void {
       if (
         options.assertionStyle === 'never' ||
@@ -229,20 +262,19 @@ export default util.createRule<Options, MessageIds>({
 
       if (
         options.objectLiteralTypeAssertions === 'allow-as-parameter' &&
-        node.parent &&
         (node.parent.type === AST_NODE_TYPES.NewExpression ||
           node.parent.type === AST_NODE_TYPES.CallExpression ||
           node.parent.type === AST_NODE_TYPES.ThrowStatement ||
           node.parent.type === AST_NODE_TYPES.AssignmentPattern ||
-          node.parent.type === AST_NODE_TYPES.JSXExpressionContainer)
+          node.parent.type === AST_NODE_TYPES.JSXExpressionContainer ||
+          (node.parent.type === AST_NODE_TYPES.TemplateLiteral &&
+            node.parent.parent.type ===
+              AST_NODE_TYPES.TaggedTemplateExpression))
       ) {
         return;
       }
 
-      if (
-        checkType(node.typeAnnotation) &&
-        node.expression.type === AST_NODE_TYPES.ObjectExpression
-      ) {
+      if (checkType(node.typeAnnotation)) {
         const suggest = getReplacementSuggestions(
           node,
           'replaceObjectTypeAssertionWithAnnotation',
@@ -258,7 +290,7 @@ export default util.createRule<Options, MessageIds>({
     }
 
     function checkExpressionForArrayAssertion(
-      node: TSESTree.TSTypeAssertion | TSESTree.TSAsExpression,
+      node: TSESTree.TSAsExpression | TSESTree.TSTypeAssertion,
     ): void {
       if (
         options.assertionStyle === 'never' ||
@@ -268,10 +300,7 @@ export default util.createRule<Options, MessageIds>({
         return;
       }
 
-      if (
-        checkType(node.typeAnnotation) &&
-        node.expression.type === AST_NODE_TYPES.ArrayExpression
-      ) {
+      if (checkType(node.typeAnnotation)) {
         const suggest = getReplacementSuggestions(
           node,
           'replaceArrayTypeAssertionWithAnnotation',
@@ -287,8 +316,8 @@ export default util.createRule<Options, MessageIds>({
     }
 
     return {
-      TSTypeAssertion(node): void {
-        if (options.assertionStyle !== 'angle-bracket') {
+      TSAsExpression(node): void {
+        if (options.assertionStyle !== 'as') {
           reportIncorrectAssertionType(node);
           return;
         }
@@ -296,8 +325,8 @@ export default util.createRule<Options, MessageIds>({
         checkExpressionForObjectAssertion(node);
         checkExpressionForArrayAssertion(node);
       },
-      TSAsExpression(node): void {
-        if (options.assertionStyle !== 'as') {
+      TSTypeAssertion(node): void {
+        if (options.assertionStyle !== 'angle-bracket') {
           reportIncorrectAssertionType(node);
           return;
         }
