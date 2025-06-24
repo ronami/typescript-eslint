@@ -40,8 +40,7 @@ export default tseslint.config(
       ['eslint-plugin']: eslintPluginPlugin,
       ['import']: importPlugin,
       ['jsdoc']: jsdocPlugin,
-      // @ts-expect-error -- https://github.com/jsx-eslint/eslint-plugin-jsx-a11y/pull/1038
-      ['jsx-a11y']: jsxA11yPlugin.flatConfigs.recommended.plugins['jsx-a11y'],
+      ['jsx-a11y']: jsxA11yPlugin,
       ['perfectionist']: perfectionistPlugin,
       ['vitest']: vitestPlugin,
       // https://github.com/facebook/react/issues/28313
