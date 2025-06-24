@@ -1,8 +1,6 @@
 // @ts-check
 
 import eslintCommentsPlugin from '@eslint-community/eslint-plugin-eslint-comments/configs';
-import { fixupConfigRules, fixupPluginRules } from '@eslint/compat';
-import { FlatCompat } from '@eslint/eslintrc';
 import eslint from '@eslint/js';
 import tseslintInternalPlugin from '@typescript-eslint/eslint-plugin-internal';
 import vitestPlugin from '@vitest/eslint-plugin';
@@ -20,7 +18,6 @@ import url from 'node:url';
 import tseslint from 'typescript-eslint';
 
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
-const compat = new FlatCompat({ baseDirectory: __dirname });
 
 const restrictNamedDeclarations = {
   message:
@@ -46,9 +43,7 @@ export default tseslint.config(
       ['vitest']: vitestPlugin,
       // https://github.com/facebook/react/issues/28313
       ['react']: reactPlugin,
-      // @ts-expect-error -- Temporary types incompatibility pending flat config support
-      // https://github.com/facebook/react/pull/30774
-      ['react-hooks']: fixupPluginRules(reactHooksPlugin),
+      ['react-hooks']: reactHooksPlugin,
       ['regexp']: regexpPlugin,
       ['unicorn']: unicornPlugin,
     },
@@ -577,17 +572,8 @@ export default tseslint.config(
   {
     extends: [
       jsxA11yPlugin.flatConfigs.recommended,
-      // https://github.com/facebook/react/pull/30774
-      // @ts-expect-error -- Temporary types incompatibility pending flat config support
-      { name: 'react/recommended', ...reactPlugin.configs.flat.recommended },
-      fixupConfigRules([
-        {
-          name: 'react-hooks/recommended',
-          // https://github.com/facebook/react/pull/30774
-          // @ts-expect-error -- Temporary types incompatibility pending flat config support
-          ...compat.config(reactHooksPlugin.configs.recommended)[0],
-        },
-      ]),
+      { name: 'react/recommended', ...reactPlugin.configs.flat?.recommended },
+      reactHooksPlugin.configs['recommended-latest'],
     ],
     files: ['packages/website/**/*.?(c|m)[tj]s?(x)'],
     name: 'website',
