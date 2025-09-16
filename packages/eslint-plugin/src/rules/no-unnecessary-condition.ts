@@ -24,6 +24,7 @@ import {
   NullThrowsReasons,
 } from '../util';
 import {
+  findPredicateArgumentAndType,
   findTruthinessAssertedArgument,
   findTypeGuardAssertedArgument,
 } from '../util/assertionFunctionUtils';
@@ -607,6 +608,13 @@ export default createRule<Options, MessageId>({
               },
             });
           }
+        }
+
+        if (findPredicateArgumentAndType(services, node)) {
+          context.report({
+            node,
+            messageId: 'alwaysFalsy',
+          });
         }
       }
 

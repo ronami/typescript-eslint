@@ -4,7 +4,74 @@ import type {
 } from '@typescript-eslint/utils';
 
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
+import * as tsutils from 'ts-api-utils';
 import * as ts from 'typescript';
+
+export function findPredicateArgumentAndType(
+  services: ParserServicesWithTypeInformation,
+  node: TSESTree.CallExpression,
+): boolean {
+  // If the call looks like `assert(expr1, expr2, ...c, d, e, f)`, then we can
+  // only care if `expr1` or `expr2` is asserted, since anything that happens
+  // within or after a spread argument is out of scope to reason about.
+  const checkableArguments: TSESTree.Expression[] = [];
+  for (const argument of node.arguments) {
+    if (argument.type === AST_NODE_TYPES.SpreadElement) {
+      break;
+    }
+    checkableArguments.push(argument);
+  }
+
+  // nothing to do
+  if (checkableArguments.length === 0) {
+    return false;
+  }
+
+  const checker = services.program.getTypeChecker();
+  const tsNode = services.esTreeNodeToTSNodeMap.get(node);
+  const signature = checker.getResolvedSignature(tsNode);
+
+  if (signature == null) {
+    return false;
+  }
+
+  const firstTypePredicateResult =
+    checker.getTypePredicateOfSignature(signature);
+
+  if (firstTypePredicateResult == null) {
+    return false;
+  }
+
+  const { kind, parameterIndex, type } = firstTypePredicateResult;
+
+  if (kind !== ts.TypePredicateKind.Identifier) {
+    return false;
+  }
+
+  const argumentNode = checkableArguments.at(parameterIndex);
+
+  if (argumentNode == null) {
+    return false;
+  }
+
+  const argumentType = checker.getTypeAtLocation(
+    services.esTreeNodeToTSNodeMap.get(argumentNode),
+  );
+
+  if (
+    tsutils
+      .unionConstituents(argumentType)
+      .some(argumentPart =>
+        tsutils
+          .unionConstituents(type)
+          .some(part => checker.isTypeAssignableTo(argumentPart, part)),
+      )
+  ) {
+    return false;
+  }
+
+  return true;
+}
 
 /**
  * Inspect a call expression to see if it's a call to an assertion function.
