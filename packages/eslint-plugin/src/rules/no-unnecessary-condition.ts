@@ -616,9 +616,8 @@ export default createRule<Options, MessageId>({
         );
 
         if (predicateTypeArgument) {
-          const typeOfArgument = getConstrainedTypeAtLocation(
-            services,
-            predicateTypeArgument.argument,
+          const typeOfArgument = checker.getTypeAtLocation(
+            services.esTreeNodeToTSNodeMap.get(predicateTypeArgument.argument),
           );
 
           if (
@@ -982,11 +981,25 @@ function isTypeContainedInAnotherType(
   containingType: ts.Type,
   checker: ts.TypeChecker,
 ) {
-  return tsutils
-    .unionConstituents(type)
-    .some(argumentPart =>
-      tsutils
-        .unionConstituents(containingType)
-        .some(part => checker.isTypeAssignableTo(argumentPart, part)),
-    );
+  // console.log({
+  //   type: checker.typeToString(type),
+  //   argumentPart: checker.typeToString(containingType),
+  // });
+
+  return tsutils.unionConstituents(type).some(argumentPart => {
+    return tsutils.unionConstituents(containingType).some(part => {
+      // console.log({
+      //   argumentPart: checker.typeToString(argumentPart),
+      //   part: checker.typeToString(part),
+      // });
+
+      // console.log({
+      //   argumentPart: checker.typeToString(argumentPart),
+      //   assignable: checker.isTypeAssignableTo(part, argumentPart),
+      //   part: checker.typeToString(part),
+      // });
+
+      return checker.isTypeAssignableTo(part, argumentPart);
+    });
+  });
 }
