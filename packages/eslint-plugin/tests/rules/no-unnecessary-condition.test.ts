@@ -3772,13 +3772,11 @@ ruleTester.run('no-unnecessary-condition', rule, {
     //     },
     {
       code: `
-function isString(value: unknown): value is boolean {
+function isString(value: unknown): value is string {
   return typeof value === 'string';
 }
 
-declare const x: 1 | '1';
-
-isString(x);
+isString(1);
       `,
       errors: [
         {

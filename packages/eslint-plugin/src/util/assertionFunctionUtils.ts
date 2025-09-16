@@ -4,13 +4,12 @@ import type {
 } from '@typescript-eslint/utils';
 
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
-import * as tsutils from 'ts-api-utils';
 import * as ts from 'typescript';
 
 export function findPredicateArgumentAndType(
   services: ParserServicesWithTypeInformation,
   node: TSESTree.CallExpression,
-): boolean {
+): { argument: TSESTree.Expression; type: ts.Type } | undefined {
   // If the call looks like `assert(expr1, expr2, ...c, d, e, f)`, then we can
   // only care if `expr1` or `expr2` is asserted, since anything that happens
   // within or after a spread argument is out of scope to reason about.
@@ -24,7 +23,7 @@ export function findPredicateArgumentAndType(
 
   // nothing to do
   if (checkableArguments.length === 0) {
-    return false;
+    return undefined;
   }
 
   const checker = services.program.getTypeChecker();
@@ -32,45 +31,32 @@ export function findPredicateArgumentAndType(
   const signature = checker.getResolvedSignature(tsNode);
 
   if (signature == null) {
-    return false;
+    return undefined;
   }
 
   const firstTypePredicateResult =
     checker.getTypePredicateOfSignature(signature);
 
   if (firstTypePredicateResult == null) {
-    return false;
+    return undefined;
   }
 
   const { kind, parameterIndex, type } = firstTypePredicateResult;
 
   if (kind !== ts.TypePredicateKind.Identifier) {
-    return false;
+    return undefined;
   }
 
-  const argumentNode = checkableArguments.at(parameterIndex);
+  const argument = checkableArguments.at(parameterIndex);
 
-  if (argumentNode == null) {
-    return false;
+  if (argument == null) {
+    return undefined;
   }
 
-  const argumentType = checker.getTypeAtLocation(
-    services.esTreeNodeToTSNodeMap.get(argumentNode),
-  );
-
-  if (
-    tsutils
-      .unionConstituents(argumentType)
-      .some(argumentPart =>
-        tsutils
-          .unionConstituents(type)
-          .some(part => checker.isTypeAssignableTo(argumentPart, part)),
-      )
-  ) {
-    return false;
-  }
-
-  return true;
+  return {
+    argument,
+    type,
+  };
 }
 
 /**

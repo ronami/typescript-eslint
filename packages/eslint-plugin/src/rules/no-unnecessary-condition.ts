@@ -610,11 +610,29 @@ export default createRule<Options, MessageId>({
           }
         }
 
-        if (findPredicateArgumentAndType(services, node)) {
-          context.report({
-            node,
-            messageId: 'alwaysFalsy',
-          });
+        const predicateTypeArgument = findPredicateArgumentAndType(
+          services,
+          node,
+        );
+
+        if (predicateTypeArgument) {
+          const typeOfArgument = getConstrainedTypeAtLocation(
+            services,
+            predicateTypeArgument.argument,
+          );
+
+          if (
+            !isTypeContainedInAnotherType(
+              typeOfArgument,
+              predicateTypeArgument.type,
+              checker,
+            )
+          ) {
+            context.report({
+              node,
+              messageId: 'alwaysFalsy',
+            });
+          }
         }
       }
 
@@ -957,4 +975,18 @@ function normalizeAllowConstantLoopConditions(
   }
 
   return allowConstantLoopConditions;
+}
+
+function isTypeContainedInAnotherType(
+  type: ts.Type,
+  containingType: ts.Type,
+  checker: ts.TypeChecker,
+) {
+  return tsutils
+    .unionConstituents(type)
+    .some(argumentPart =>
+      tsutils
+        .unionConstituents(containingType)
+        .some(part => checker.isTypeAssignableTo(argumentPart, part)),
+    );
 }
