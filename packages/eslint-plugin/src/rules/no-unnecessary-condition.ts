@@ -24,7 +24,6 @@ import {
   NullThrowsReasons,
 } from '../util';
 import {
-  findPredicateArgumentAndType,
   findTruthinessAssertedArgument,
   findTypeGuardAssertedArgument,
 } from '../util/assertionFunctionUtils';
@@ -607,30 +606,32 @@ export default createRule<Options, MessageId>({
                   : 'type guard',
               },
             });
-          }
-        }
+          } else if (!typeGuardAssertedArgument.asserts) {
+            if (
+              !isTypeIntersectingWithType(
+                typeOfArgument,
+                typeGuardAssertedArgument.type,
+                checker,
+              )
+            ) {
+              context.report({
+                node,
+                messageId: 'alwaysFalsy',
+              });
+            }
 
-        const predicateTypeArgument = findPredicateArgumentAndType(
-          services,
-          node,
-        );
-
-        if (predicateTypeArgument) {
-          const typeOfArgument = checker.getTypeAtLocation(
-            services.esTreeNodeToTSNodeMap.get(predicateTypeArgument.argument),
-          );
-
-          if (
-            !isTypeContainedInAnotherType(
-              typeOfArgument,
-              predicateTypeArgument.type,
-              checker,
-            )
-          ) {
-            context.report({
-              node,
-              messageId: 'alwaysFalsy',
-            });
+            if (
+              isTypeContainedInType(
+                typeOfArgument,
+                typeGuardAssertedArgument.type,
+                checker,
+              )
+            ) {
+              context.report({
+                node,
+                messageId: 'alwaysTruthy',
+              });
+            }
           }
         }
       }
@@ -976,7 +977,7 @@ function normalizeAllowConstantLoopConditions(
   return allowConstantLoopConditions;
 }
 
-function isTypeContainedInAnotherType(
+function isTypeIntersectingWithType(
   type: ts.Type,
   containingType: ts.Type,
   checker: ts.TypeChecker,
@@ -999,7 +1000,19 @@ function isTypeContainedInAnotherType(
       //   part: checker.typeToString(part),
       // });
 
-      return checker.isTypeAssignableTo(part, argumentPart);
+      return checker.isTypeAssignableTo(argumentPart, part);
     });
   });
+}
+
+function isTypeContainedInType(
+  type: ts.Type,
+  containingType: ts.Type,
+  checker: ts.TypeChecker,
+) {
+  // console.log({
+  //   type: checker.typeToString(type),
+  //   containingType: checker.typeToString(containingType),
+  // });
+  return checker.isTypeAssignableTo(type, containingType);
 }

@@ -1130,14 +1130,6 @@ assertString('falafel');
       `,
       options: [{ checkTypePredicates: true }],
     },
-    {
-      // Technically, this has type 'falafel' and not string.
-      code: `
-declare function isString(x: unknown): x is string;
-isString('falafel');
-      `,
-      options: [{ checkTypePredicates: true }],
-    },
     `
 type A = { [name in Lowercase<string>]?: A };
 declare const a: A;
@@ -3852,6 +3844,29 @@ if (arr[42] && arr[42]) {
           tsconfigRootDir: getFixturesRootDir(),
         },
       },
+    },
+    {
+      code: `
+declare function isString(x: unknown): x is string;
+isString('falafel');
+      `,
+      errors: [{ messageId: 'alwaysTruthy' }],
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+function isString(value: unknown): value is string {
+  return typeof value === 'string';
+}
+
+isString(1);
+      `,
+      errors: [
+        {
+          messageId: 'alwaysFalsy',
+        },
+      ],
+      options: [{ checkTypePredicates: true }],
     },
   ],
 });
