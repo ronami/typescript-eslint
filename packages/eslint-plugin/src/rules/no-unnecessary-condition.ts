@@ -583,6 +583,7 @@ export default createRule<Options, MessageId>({
           services,
           node,
         );
+
         if (truthinessAssertedArgument != null) {
           checkNode(truthinessAssertedArgument);
         }
@@ -591,6 +592,7 @@ export default createRule<Options, MessageId>({
           services,
           node,
         );
+
         if (typeGuardAssertedArgument != null) {
           const typeOfArgument = getConstrainedTypeAtLocation(
             services,
@@ -606,7 +608,10 @@ export default createRule<Options, MessageId>({
                   : 'type guard',
               },
             });
-          } else if (!typeGuardAssertedArgument.asserts) {
+
+            return;
+          }
+          if (!typeGuardAssertedArgument.asserts) {
             if (
               !isTypeIntersectingWithType(
                 typeOfArgument,
@@ -633,6 +638,8 @@ export default createRule<Options, MessageId>({
               });
             }
           }
+
+          return;
         }
       }
 
@@ -982,25 +989,12 @@ function isTypeIntersectingWithType(
   containingType: ts.Type,
   checker: ts.TypeChecker,
 ) {
-  // console.log({
-  //   type: checker.typeToString(type),
-  //   argumentPart: checker.typeToString(containingType),
-  // });
-
   return tsutils.unionConstituents(type).some(argumentPart => {
     return tsutils.unionConstituents(containingType).some(part => {
-      // console.log({
-      //   argumentPart: checker.typeToString(argumentPart),
-      //   part: checker.typeToString(part),
-      // });
-
-      // console.log({
-      //   argumentPart: checker.typeToString(argumentPart),
-      //   assignable: checker.isTypeAssignableTo(part, argumentPart),
-      //   part: checker.typeToString(part),
-      // });
-
-      return checker.isTypeAssignableTo(argumentPart, part);
+      return (
+        checker.isTypeAssignableTo(argumentPart, part) ||
+        checker.isTypeAssignableTo(part, argumentPart)
+      );
     });
   });
 }
@@ -1010,9 +1004,5 @@ function isTypeContainedInType(
   containingType: ts.Type,
   checker: ts.TypeChecker,
 ) {
-  // console.log({
-  //   type: checker.typeToString(type),
-  //   containingType: checker.typeToString(containingType),
-  // });
   return checker.isTypeAssignableTo(type, containingType);
 }
