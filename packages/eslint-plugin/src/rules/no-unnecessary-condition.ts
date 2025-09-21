@@ -612,32 +612,18 @@ export default createRule<Options, MessageId>({
             return;
           }
 
-          if (!typeGuardAssertedArgument.asserts) {
-            if (
-              !isTypeIntersectingWithType(
-                typeOfArgument,
-                typeGuardAssertedArgument.type,
-                checker,
-              )
-            ) {
-              context.report({
-                node,
-                messageId: 'alwaysFalsy',
-              });
-            }
-
-            if (
-              isTypeContainedInType(
-                typeOfArgument,
-                typeGuardAssertedArgument.type,
-                checker,
-              )
-            ) {
-              context.report({
-                node,
-                messageId: 'alwaysTruthy',
-              });
-            }
+          if (
+            !typeGuardAssertedArgument.asserts &&
+            !isTypeIntersectingWithType(
+              typeOfArgument,
+              typeGuardAssertedArgument.type,
+              checker,
+            )
+          ) {
+            context.report({
+              node,
+              messageId: 'alwaysFalsy',
+            });
           }
 
           return;
@@ -998,19 +984,4 @@ function isTypeIntersectingWithType(
       );
     });
   });
-}
-
-function isTypeContainedInType(
-  type: ts.Type,
-  containingType: ts.Type,
-  checker: ts.TypeChecker,
-) {
-  if (
-    tsutils.isIntrinsicAnyType(type) ||
-    tsutils.isIntrinsicUnknownType(type)
-  ) {
-    return false;
-  }
-
-  return checker.isTypeAssignableTo(type, containingType);
 }
