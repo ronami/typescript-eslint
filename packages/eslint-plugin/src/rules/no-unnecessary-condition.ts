@@ -976,12 +976,20 @@ function isTypeIntersectingWithType(
   containingType: ts.Type,
   checker: ts.TypeChecker,
 ) {
-  return tsutils.unionConstituents(type).some(argumentPart => {
-    return tsutils.unionConstituents(containingType).some(part => {
-      return (
-        checker.isTypeAssignableTo(argumentPart, part) ||
-        checker.isTypeAssignableTo(part, argumentPart)
-      );
-    });
-  });
+  return (
+    tsutils
+      .unionConstituents(type)
+      .some(argumentPart =>
+        tsutils
+          .unionConstituents(containingType)
+          .some(part => checker.isTypeAssignableTo(argumentPart, part)),
+      ) ||
+    tsutils
+      .unionConstituents(containingType)
+      .some(part =>
+        tsutils
+          .unionConstituents(type)
+          .some(argumentPart => checker.isTypeAssignableTo(argumentPart, part)),
+      )
+  );
 }
