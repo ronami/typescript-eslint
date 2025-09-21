@@ -611,6 +611,7 @@ export default createRule<Options, MessageId>({
 
             return;
           }
+
           if (!typeGuardAssertedArgument.asserts) {
             if (
               !isTypeIntersectingWithType(
@@ -1004,5 +1005,12 @@ function isTypeContainedInType(
   containingType: ts.Type,
   checker: ts.TypeChecker,
 ) {
+  if (
+    tsutils.isIntrinsicAnyType(type) ||
+    tsutils.isIntrinsicUnknownType(type)
+  ) {
+    return false;
+  }
+
   return checker.isTypeAssignableTo(type, containingType);
 }

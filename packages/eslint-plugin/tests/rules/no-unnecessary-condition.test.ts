@@ -1158,6 +1158,43 @@ declare const t: T;
 t.a.a.a.value;
 t.A?.A?.A?.VALUE;
     `,
+
+    {
+      code: `
+declare function isString(x: unknown): x is 'hello' | 'world';
+declare const x: 'foo' | 'hello';
+
+isString(x);
+      `,
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function isString(x: unknown): x is string | number;
+declare const x: boolean | string;
+
+isString(x);
+      `,
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function isString(x: unknown): x is string | number;
+declare const x: boolean | 'hello';
+
+isString(x);
+      `,
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function isString(x: unknown): x is string;
+declare const x: any;
+
+isString(x);
+      `,
+      options: [{ checkTypePredicates: true }],
+    },
   ],
 
   invalid: [
@@ -3851,6 +3888,42 @@ declare function isString(x: unknown): x is string;
 isString('falafel');
       `,
       errors: [{ messageId: 'alwaysTruthy' }],
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function isString(x: unknown): x is any;
+isString('falafel');
+      `,
+      errors: [{ messageId: 'alwaysTruthy' }],
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function isString(x: unknown): x is unknown;
+isString('falafel');
+      `,
+      errors: [{ messageId: 'alwaysTruthy' }],
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function isString(x: unknown): x is 'hello' | 'world';
+declare const x: 'foo' | 'bar';
+
+isString(x);
+      `,
+      errors: [{ messageId: 'alwaysFalsy' }],
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function isString(x: unknown): x is number | string;
+declare const x: boolean | null;
+
+isString(x);
+      `,
+      errors: [{ messageId: 'alwaysFalsy' }],
       options: [{ checkTypePredicates: true }],
     },
     {
