@@ -18,6 +18,10 @@ const remarkPlugins: MDXPlugin[] = [[npm2yarnPlugin, { sync: true }]];
 
 const githubUrl = 'https://github.com/typescript-eslint/typescript-eslint';
 
+const currentMajorVersion =
+  process.env.CURRENT_MAJOR_VERSION &&
+  Number(process.env.CURRENT_MAJOR_VERSION);
+
 const presetClassicOptions: PresetClassicOptions = {
   blog: {
     blogSidebarCount: 'ALL',
@@ -60,6 +64,26 @@ const themeConfig: AlgoliaThemeConfig & ThemeCommonConfig = {
     appId: 'N1HUB2TU6A',
     indexName: 'typescript-eslint',
   },
+  announcementBar:
+    currentMajorVersion &&
+    Number(version[0].split('.')[0]) < currentMajorVersion
+      ? {
+          content: [
+            'This documentation is for an older major version of typescript-eslint.',
+            '<br />',
+            'It is no longer maintained or supported. It may crash with the latest versions of TypeScript.',
+            '<hr />',
+            'Using the latest version of typescript-eslint is strongly recommended for',
+            'getting the latest rule features and fixes, ',
+            'supporting the latest TypeScript features and syntax, and',
+            'continuous performance and stability improvements.',
+            '<hr />',
+            'Please visit <a href="https://typescript-eslint.io">typescript-eslint.io</a> for the latest version\'s documentation.',
+          ].join('\n'),
+          id: 'old-version-announcement',
+          isCloseable: false,
+        }
+      : undefined,
   colorMode: {
     respectPrefersColorScheme: true,
   },
@@ -90,12 +114,6 @@ const themeConfig: AlgoliaThemeConfig & ThemeCommonConfig = {
             className: 'image-link stack-overflow-link social-link-icon',
             href: 'https://stackoverflow.com/questions/tagged/typescript-eslint',
             label: 'Stack Overflow',
-          },
-          {
-            className: 'image-link twitter-link social-link-icon',
-            href: 'https://twitter.com/tseslint',
-            label: 'Twitter',
-            rel: 'me noopener',
           },
         ],
         title: 'Community',
@@ -184,7 +202,7 @@ const themeConfig: AlgoliaThemeConfig & ThemeCommonConfig = {
     title: 'typescript-eslint',
   },
   prism: {
-    additionalLanguages: ['ignore'],
+    additionalLanguages: ['bash', 'diff', 'ignore'],
     magicComments: [
       {
         block: { end: 'highlight-end', start: 'highlight-start' },
@@ -333,8 +351,7 @@ const redirects: PluginRedirectOptions = {
 
 const config: Config = {
   baseUrl: '/',
-  tagline:
-    'The tooling that enables ESLint and Prettier to support TypeScript.',
+  tagline: 'Powerful static analysis for JavaScript and TypeScript.',
   title: 'typescript-eslint',
   url: 'https://typescript-eslint.io',
 
@@ -350,28 +367,33 @@ const config: Config = {
   onBrokenMarkdownLinks: 'throw',
   organizationName: 'typescript-eslint',
   plugins: [
-    ...['ast-spec', 'type-utils'].map(packageName => [
-      'docusaurus-plugin-typedoc',
-      {
-        entryPoints: [`../${packageName}/src/index.ts`],
-        enumMembersFormat: 'table',
-        exclude: '**/*.d.ts',
-        excludeExternals: true,
-        groupOrder: ['Functions', 'Variables', '*'],
-        hidePageTitle: true,
-        id: `typedoc-generated-${packageName}`,
-        indexFormat: 'table',
-        out: `../../docs/packages/${packageName}/generated`,
-        outputFileStrategy: 'modules',
-        parametersFormat: 'table',
-        plugin: [require.resolve('./tools/typedoc-plugin-no-inherit-fork.mjs')],
-        propertiesFormat: 'table',
-        readme: 'none',
-        tsconfig: `../${packageName}/tsconfig.json`,
-        typeDeclarationFormat: 'table',
-        useCodeBlocks: true,
-      },
-    ]),
+    './plugins/recent-blog-posts/index.ts',
+    ...['ast-spec', 'project-service', 'tsconfig-utils', 'type-utils'].map(
+      packageName => [
+        'docusaurus-plugin-typedoc',
+        {
+          entryPoints: [`../${packageName}/src/index.ts`],
+          enumMembersFormat: 'table',
+          exclude: '**/*.d.ts',
+          excludeExternals: true,
+          groupOrder: ['Functions', 'Variables', '*'],
+          hidePageTitle: true,
+          id: `typedoc-generated-${packageName}`,
+          indexFormat: 'table',
+          out: `../../docs/packages/${packageName}/generated`,
+          outputFileStrategy: 'modules',
+          parametersFormat: 'table',
+          plugin: [
+            require.resolve('./tools/typedoc-plugin-no-inherit-fork.mjs'),
+          ],
+          propertiesFormat: 'table',
+          readme: 'none',
+          tsconfig: `../${packageName}/tsconfig.json`,
+          typeDeclarationFormat: 'table',
+          useCodeBlocks: true,
+        },
+      ],
+    ),
     require.resolve('./webpack.plugin'),
     ['@docusaurus/plugin-content-docs', pluginContentDocsOptions],
     ['@docusaurus/plugin-pwa', pluginPwaOptions],

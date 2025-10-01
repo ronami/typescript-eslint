@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-namespace */
+/* eslint-disable @typescript-eslint/no-namespace, no-restricted-syntax */
 
 import { Linter as ESLintLinter } from 'eslint';
 
@@ -229,7 +229,10 @@ namespace Linter {
      */
     message: string;
     messageId?: string;
-    nodeType: string;
+    /**
+     * @deprecated `nodeType` is deprecated and will be removed in the next major version.
+     */
+    nodeType?: string;
     /**
      * The ID of the rule which makes this message.
      */

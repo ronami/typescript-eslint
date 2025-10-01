@@ -6,6 +6,7 @@ import type * as ts from 'typescript';
 import type {
   ParseSettings,
   PlaygroundSystem,
+  RegisterFile,
   UpdateModel,
   WebLinterModule,
 } from './types';
@@ -22,15 +23,14 @@ export function createParser(
   vfs: TSVFS,
 ): {
   updateConfig: (compilerOptions: ts.CompilerOptions) => void;
+  registerFile: RegisterFile;
 } & Parser.ParserModule {
-  const registeredFiles = new Set<string>();
-
   const createEnv = (
     compilerOptions: ts.CompilerOptions,
   ): tsvfs.VirtualTypeScriptEnvironment => {
     return vfs.createVirtualTypeScriptEnvironment(
       system,
-      [...registeredFiles],
+      system.getScriptFileNames(),
       window.ts,
       compilerOptions,
     );
@@ -48,10 +48,9 @@ export function createParser(
       // if text is empty use empty line to avoid error
       const code = text || '\n';
 
-      if (registeredFiles.has(filePath)) {
+      if (compilerHost.getSourceFile(filePath)) {
         compilerHost.updateFile(filePath, code);
       } else {
-        registeredFiles.add(filePath);
         compilerHost.createFile(filePath, code);
       }
 
@@ -103,11 +102,15 @@ export function createParser(
             checker.getTypeAtLocation(
               converted.astMaps.esTreeNodeToTSNodeMap.get(node),
             ),
+          isolatedDeclarations: compilerOptions.isolatedDeclarations ?? false,
           program,
           tsNodeToESTreeNodeMap: converted.astMaps.tsNodeToESTreeNodeMap,
         },
         visitorKeys: utils.visitorKeys,
       };
+    },
+    registerFile(filePath: string, code: string): void {
+      compilerHost.createFile(filePath, code);
     },
     updateConfig(compilerOptions): void {
       compilerHost = createEnv(compilerOptions);

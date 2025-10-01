@@ -1649,36 +1649,11 @@ function fooFunction(foo: ArrayClass<string>[]) {
       output: 'let x: any[];',
     },
     {
-      code: 'let x: Array<>;',
-      errors: [
-        {
-          column: 8,
-          data: { className: 'Array', readonlyPrefix: '', type: 'any' },
-          line: 1,
-          messageId: 'errorStringArray',
-        },
-      ],
-      options: [{ default: 'array' }],
-      output: 'let x: any[];',
-    },
-    {
       code: 'let x: Array;',
       errors: [
         {
           column: 8,
           data: { className: 'Array', readonlyPrefix: '', type: 'any' },
-          line: 1,
-          messageId: 'errorStringArraySimple',
-        },
-      ],
-      options: [{ default: 'array-simple' }],
-      output: 'let x: any[];',
-    },
-    {
-      code: 'let x: Array<>;',
-      errors: [
-        {
-          column: 8,
           line: 1,
           messageId: 'errorStringArraySimple',
         },
@@ -1955,6 +1930,41 @@ interface FooInterface {
       options: [{ default: 'array-simple' }],
       output: 'declare function foo<E extends readonly string[]>(extra: E): E;',
     },
+    {
+      code: 'type Conditional<T> = Array<T extends string ? string : number>;',
+      errors: [
+        {
+          data: { className: 'Array', readonlyPrefix: '', type: 'T' },
+          messageId: 'errorStringArray',
+        },
+      ],
+      options: [{ default: 'array' }],
+      output: 'type Conditional<T> = (T extends string ? string : number)[];',
+    },
+    {
+      code: 'type Conditional<T> = (T extends string ? string : number)[];',
+      errors: [
+        {
+          data: { className: 'Array', readonlyPrefix: '', type: 'T' },
+          messageId: 'errorStringGenericSimple',
+        },
+      ],
+      options: [{ default: 'array-simple' }],
+      output:
+        'type Conditional<T> = Array<T extends string ? string : number>;',
+    },
+    {
+      code: 'type Conditional<T> = (T extends string ? string : number)[];',
+      errors: [
+        {
+          data: { className: 'Array', readonlyPrefix: '', type: 'T' },
+          messageId: 'errorStringGeneric',
+        },
+      ],
+      options: [{ default: 'generic' }],
+      output:
+        'type Conditional<T> = Array<T extends string ? string : number>;',
+    },
   ],
 });
 
@@ -2090,7 +2100,6 @@ type BrokenArray = {
       'let yy: number[][] = [[4, 5], [6]];',
       'let yy: Array<Array<number>> = [[4, 5], [6]];',
     );
-    testOutput('array', 'let a: Array<>[] = [];', 'let a: any[][] = [];');
     testOutput('array', 'let a: Array<any[]> = [];', 'let a: any[][] = [];');
     testOutput(
       'array',
@@ -2098,11 +2107,6 @@ type BrokenArray = {
       'let a: any[][][] = [];',
     );
 
-    testOutput(
-      'generic',
-      'let a: Array<>[] = [];',
-      'let a: Array<Array<>> = [];',
-    );
     testOutput(
       'generic',
       'let a: Array<any[]> = [];',
@@ -2198,15 +2202,11 @@ type BrokenArray = {
 describe('schema validation', () => {
   // https://github.com/typescript-eslint/typescript-eslint/issues/6852
   test("array-type does not accept 'simple-array' option", () => {
-    if (areOptionsValid(rule, [{ default: 'simple-array' }])) {
-      throw new Error(`Options succeeded validation for bad options`);
-    }
+    expect(areOptionsValid(rule, [{ default: 'simple-array' }])).toBe(false);
   });
 
   // https://github.com/typescript-eslint/typescript-eslint/issues/6892
   test('array-type does not accept non object option', () => {
-    if (areOptionsValid(rule, ['array'])) {
-      throw new Error(`Options succeeded validation for bad options`);
-    }
+    expect(areOptionsValid(rule, ['array'])).toBe(false);
   });
 });

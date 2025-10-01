@@ -1,25 +1,25 @@
-import type { TSESTree } from '@typescript-eslint/types';
+import type { NodeWithParent, TSESTree } from '@typescript-eslint/types';
 
 import type { Scope } from '../scope';
 import type { Variable } from '../variable';
 
 import { createIdGenerator } from '../ID';
 
-enum ReferenceFlag {
+export enum ReferenceFlag {
   Read = 0x1,
   Write = 0x2,
   ReadWrite = 0x3,
 }
 
-interface ReferenceImplicitGlobal {
-  node: TSESTree.Node;
+export interface ReferenceImplicitGlobal {
+  node: NodeWithParent;
   pattern: TSESTree.BindingName;
   ref?: Reference;
 }
 
 const generator = createIdGenerator();
 
-enum ReferenceTypeFlag {
+export enum ReferenceTypeFlag {
   Value = 0x1,
   Type = 0x2,
 }
@@ -27,7 +27,7 @@ enum ReferenceTypeFlag {
 /**
  * A Reference represents a single occurrence of an identifier in code.
  */
-class Reference {
+export class Reference {
   /**
    * A unique ID for this instance - primarily used to help debugging and testing
    */
@@ -152,10 +152,3 @@ class Reference {
     return this.#flag === ReferenceFlag.ReadWrite;
   }
 }
-
-export {
-  Reference,
-  ReferenceFlag,
-  type ReferenceImplicitGlobal,
-  ReferenceTypeFlag,
-};

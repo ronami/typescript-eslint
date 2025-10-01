@@ -228,6 +228,8 @@ export default createRule<Options, MessageIds>({
         oneOf: [
           {
             type: 'string',
+            description:
+              'Broadly set functions and allowNamedExports to false.',
             enum: ['nofunc'],
           },
           {

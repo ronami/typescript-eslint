@@ -1,5 +1,5 @@
 import type { TSESTree } from '@typescript-eslint/types';
-import type { NewPlugin } from 'pretty-format';
+import type { NewPlugin } from '@vitest/pretty-format';
 
 import { AST_NODE_TYPES } from '@typescript-eslint/types';
 
@@ -20,7 +20,7 @@ type Node = { type: AST_NODE_TYPES } & Record<string, unknown>;
 type Identifier = { name: string; type: AST_NODE_TYPES.Identifier } & Node;
 const SEEN_NODES = new Map<Node, number>();
 
-const serializer: NewPlugin = {
+export const serializer: NewPlugin = {
   serialize(node: Node): string {
     if (node.type === AST_NODE_TYPES.Identifier) {
       return `Identifier<"${(node as Identifier).name}">`;
@@ -50,5 +50,3 @@ const serializer: NewPlugin = {
     );
   },
 };
-
-export { serializer };

@@ -1,57 +1,133 @@
 import type { TSESTree } from '@typescript-eslint/types';
-import type { ParserServicesWithTypeInformation } from '@typescript-eslint/typescript-estree';
-import type * as ts from 'typescript';
 
-import { getConstrainedTypeAtLocation } from '../src';
+import * as tsutils from 'ts-api-utils';
 
-const node = {} as TSESTree.Node;
+import {
+  getConstrainedTypeAtLocation,
+  isTypeUnknownType,
+} from '../src/index.js';
+import { parseCodeForEslint } from './test-utils/custom-matchers/custom-matchers.js';
 
-const mockType = (): ts.Type => {
-  return {} as ts.Type;
-};
+describe(getConstrainedTypeAtLocation, () => {
+  // See https://github.com/typescript-eslint/typescript-eslint/issues/10438
+  // eslint-disable-next-line vitest/no-disabled-tests -- known issue.
+  it.skip('returns unknown for unconstrained generic', () => {
+    const sourceCode = `
+function foo<T>(x: T);
+    `;
 
-const mockServices = ({
-  baseConstraintOfType,
-  typeAtLocation,
-}: {
-  baseConstraintOfType?: ts.Type;
-  typeAtLocation: ts.Type;
-}): ParserServicesWithTypeInformation => {
-  const typeChecker = {
-    getBaseConstraintOfType: (_: ts.Type) => baseConstraintOfType,
-  } as ts.TypeChecker;
-  const program = {
-    getTypeChecker: () => typeChecker,
-  } as ts.Program;
+    const { ast, services } = parseCodeForEslint(sourceCode);
 
-  return {
-    getTypeAtLocation: (_: TSESTree.Node) => typeAtLocation,
-    program,
-  } as ParserServicesWithTypeInformation;
-};
+    const functionNode = ast.body[0] as TSESTree.FunctionDeclaration;
+    const parameterNode = functionNode.params[0];
 
-describe('getConstrainedTypeAtLocation', () => {
-  describe('when the node has a generic constraint', () => {
-    it('returns the generic constraint type', () => {
-      const typeAtLocation = mockType();
-      const baseConstraintOfType = mockType();
-      const services = mockServices({
-        baseConstraintOfType,
-        typeAtLocation,
-      });
+    const constraintAtLocation = getConstrainedTypeAtLocation(
+      services,
+      parameterNode,
+    );
 
-      expect(getConstrainedTypeAtLocation(services, node)).toBe(
-        baseConstraintOfType,
-      );
-    });
+    expect(tsutils.isTypeParameter(constraintAtLocation)).toBe(false);
+    // Requires https://github.com/microsoft/TypeScript/issues/60475 to solve.
+    expect(isTypeUnknownType(constraintAtLocation)).toBe(true);
   });
 
-  describe('when the node does not have a generic constraint', () => {
-    it('returns the node type', () => {
-      const typeAtLocation = mockType();
-      const services = mockServices({ typeAtLocation });
+  it('returns unknown for extends unknown', () => {
+    const sourceCode = `
+function foo<T extends unknown>(x: T);
+    `;
 
-      expect(getConstrainedTypeAtLocation(services, node)).toBe(typeAtLocation);
-    });
+    const { ast, services } = parseCodeForEslint(sourceCode);
+
+    const functionNode = ast.body[0] as TSESTree.FunctionDeclaration;
+    const parameterNode = functionNode.params[0];
+
+    const constraintAtLocation = getConstrainedTypeAtLocation(
+      services,
+      parameterNode,
+    );
+
+    expect(tsutils.isTypeParameter(constraintAtLocation)).toBe(false);
+    expect(tsutils.isIntrinsicUnknownType(constraintAtLocation)).toBe(true);
+  });
+
+  it('returns unknown for extends any', () => {
+    const sourceCode = `
+function foo<T extends any>(x: T);
+    `;
+
+    const { ast, services } = parseCodeForEslint(sourceCode);
+
+    const functionNode = ast.body[0] as TSESTree.FunctionDeclaration;
+    const parameterNode = functionNode.params[0];
+
+    const constraintAtLocation = getConstrainedTypeAtLocation(
+      services,
+      parameterNode,
+    );
+
+    expect(tsutils.isTypeParameter(constraintAtLocation)).toBe(false);
+    expect(tsutils.isIntrinsicUnknownType(constraintAtLocation)).toBe(true);
+  });
+
+  it('returns string for extends string', () => {
+    const sourceCode = `
+function foo<T extends string>(x: T);
+    `;
+
+    const { ast, services } = parseCodeForEslint(sourceCode);
+
+    const functionNode = ast.body[0] as TSESTree.FunctionDeclaration;
+    const parameterNode = functionNode.params[0];
+
+    const constraintAtLocation = getConstrainedTypeAtLocation(
+      services,
+      parameterNode,
+    );
+
+    expect(tsutils.isTypeParameter(constraintAtLocation)).toBe(false);
+    expect(tsutils.isIntrinsicStringType(constraintAtLocation)).toBe(true);
+  });
+
+  it('returns string for non-generic string', () => {
+    const sourceCode = `
+function foo(x: string);
+    `;
+
+    const { ast, services } = parseCodeForEslint(sourceCode);
+
+    const functionNode = ast.body[0] as TSESTree.FunctionDeclaration;
+    const parameterNode = functionNode.params[0];
+
+    const constraintAtLocation = getConstrainedTypeAtLocation(
+      services,
+      parameterNode,
+    );
+
+    expect(tsutils.isTypeParameter(constraintAtLocation)).toBe(false);
+    expect(tsutils.isIntrinsicStringType(constraintAtLocation)).toBe(true);
+  });
+
+  it('handles type parameter whose constraint is a constrained type parameter', () => {
+    const sourceCode = `
+function foo<T extends string>() {
+  function bar<V extends T>(x: V) {
+  }
+}
+    `;
+
+    const { ast, services } = parseCodeForEslint(sourceCode);
+
+    const outerFunctionNode = ast.body[0] as TSESTree.FunctionDeclaration;
+    const innerFunctionNode = outerFunctionNode.body
+      .body[0] as TSESTree.FunctionDeclaration;
+    const parameterNode = innerFunctionNode.params[0];
+
+    const constraintAtLocation = getConstrainedTypeAtLocation(
+      services,
+      parameterNode,
+    );
+
+    expect(tsutils.isTypeParameter(constraintAtLocation)).toBe(false);
+    expect(tsutils.isIntrinsicStringType(constraintAtLocation)).toBe(true);
   });
 });

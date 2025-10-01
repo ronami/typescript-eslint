@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import switchExhaustivenessCheck from '../../src/rules/switch-exhaustiveness-check';
 
-const rootPath = path.join(process.cwd(), 'tests/fixtures/');
+const rootPath = path.join(__dirname, '..', 'fixtures');
 
 const ruleTester = new RuleTester({
   languageOptions: {
@@ -2282,46 +2282,6 @@ switch (value) {
       ],
     },
     {
-      code: `
-        enum Enum {
-          'a' = 1,
-          [\`key-with
-
-          new-line\`] = 2,
-        }
-
-        declare const a: Enum;
-
-        switch (a) {
-        }
-      `,
-      errors: [
-        {
-          messageId: 'switchIsNotExhaustive',
-          suggestions: [
-            {
-              messageId: 'addMissingCases',
-              output: `
-        enum Enum {
-          'a' = 1,
-          [\`key-with
-
-          new-line\`] = 2,
-        }
-
-        declare const a: Enum;
-
-        switch (a) {
-        case Enum.a: { throw new Error('Not implemented yet: Enum.a case') }
-        case Enum['key-with\\n\\n          new-line']: { throw new Error('Not implemented yet: Enum[\\'key-with\\\\n\\\\n          new-line\\'] case') }
-        }
-      `,
-            },
-          ],
-        },
-      ],
-    },
-    {
       code: noFormat`
         enum Enum {
           'a' = 1,
@@ -2944,6 +2904,88 @@ switch (literal) {
         {
           considerDefaultExhaustiveForUnions: false,
           defaultCaseCommentPattern: '^skip\\sdefault',
+        },
+      ],
+    },
+    {
+      code: `
+        export namespace A {
+          export enum B {
+            C,
+            D,
+          }
+        }
+        declare const foo: A.B;
+        switch (foo) {
+          case A.B.C: {
+            break;
+          }
+        }
+      `,
+      errors: [
+        {
+          column: 17,
+          data: {
+            missingBranches: 'A.B.D',
+          },
+          line: 9,
+          messageId: 'switchIsNotExhaustive',
+          suggestions: [
+            {
+              messageId: 'addMissingCases',
+              output: `
+        export namespace A {
+          export enum B {
+            C,
+            D,
+          }
+        }
+        declare const foo: A.B;
+        switch (foo) {
+          case A.B.C: {
+            break;
+          }
+          case A.B.D: { throw new Error('Not implemented yet: A.B.D case') }
+        }
+      `,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: `
+        import { A } from './switch-exhaustiveness-check';
+        declare const foo: A.B;
+        switch (foo) {
+          case A.B.C: {
+            break;
+          }
+        }
+      `,
+      errors: [
+        {
+          column: 17,
+          data: {
+            missingBranches: 'A.B.D',
+          },
+          line: 4,
+          messageId: 'switchIsNotExhaustive',
+          suggestions: [
+            {
+              messageId: 'addMissingCases',
+              output: `
+        import { A } from './switch-exhaustiveness-check';
+        declare const foo: A.B;
+        switch (foo) {
+          case A.B.C: {
+            break;
+          }
+          case A.B.D: { throw new Error('Not implemented yet: A.B.D case') }
+        }
+      `,
+            },
+          ],
         },
       ],
     },

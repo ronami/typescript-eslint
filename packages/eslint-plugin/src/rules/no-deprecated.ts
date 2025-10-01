@@ -4,14 +4,32 @@ import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 import * as tsutils from 'ts-api-utils';
 import * as ts from 'typescript';
 
-import { createRule, getParserServices, nullThrows } from '../util';
+import type { TypeOrValueSpecifier } from '../util';
+
+import {
+  createRule,
+  getParserServices,
+  nullThrows,
+  typeOrValueSpecifiersSchema,
+  typeMatchesSomeSpecifier,
+  valueMatchesSomeSpecifier,
+} from '../util';
 
 type IdentifierLike =
   | TSESTree.Identifier
   | TSESTree.JSXIdentifier
+  | TSESTree.PrivateIdentifier
   | TSESTree.Super;
 
-export default createRule({
+type MessageIds = 'deprecated' | 'deprecatedWithReason';
+
+type Options = [
+  {
+    allow?: TypeOrValueSpecifier[];
+  },
+];
+
+export default createRule<Options, MessageIds>({
   name: 'no-deprecated',
   meta: {
     type: 'problem',
@@ -24,11 +42,27 @@ export default createRule({
       deprecated: `\`{{name}}\` is deprecated.`,
       deprecatedWithReason: `\`{{name}}\` is deprecated. {{reason}}`,
     },
-    schema: [],
+    schema: [
+      {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          allow: {
+            ...typeOrValueSpecifiersSchema,
+            description: 'Type specifiers that can be allowed.',
+          },
+        },
+      },
+    ],
   },
-  defaultOptions: [],
-  create(context) {
+  defaultOptions: [
+    {
+      allow: [],
+    },
+  ],
+  create(context, [options]) {
     const { jsDocParsingMode } = context.parserOptions;
+    const allow = options.allow;
     if (jsDocParsingMode === 'none' || jsDocParsingMode === 'type-info') {
       throw new Error(
         `Cannot be used with jsDocParsingMode: '${jsDocParsingMode}'.`,
@@ -89,6 +123,7 @@ export default createRule({
 
         case AST_NODE_TYPES.MethodDefinition:
         case AST_NODE_TYPES.PropertyDefinition:
+        case AST_NODE_TYPES.AccessorProperty:
           return parent.key === node;
 
         case AST_NODE_TYPES.Property:
@@ -127,17 +162,17 @@ export default createRule({
       }
     }
 
-    function isInsideExportOrImport(node: TSESTree.Node): boolean {
+    function isInsideImport(node: TSESTree.Node): boolean {
       let current = node;
 
       while (true) {
         switch (current.type) {
-          case AST_NODE_TYPES.ExportAllDeclaration:
-          case AST_NODE_TYPES.ExportNamedDeclaration:
           case AST_NODE_TYPES.ImportDeclaration:
             return true;
 
           case AST_NODE_TYPES.ArrowFunctionExpression:
+          case AST_NODE_TYPES.ExportAllDeclaration:
+          case AST_NODE_TYPES.ExportNamedDeclaration:
           case AST_NODE_TYPES.BlockStatement:
           case AST_NODE_TYPES.ClassDeclaration:
           case AST_NODE_TYPES.TSInterfaceDeclaration:
@@ -312,9 +347,18 @@ export default createRule({
         const property = services
           .getTypeAtLocation(node.parent.parent)
           .getProperty(node.name);
-        const symbol = services.getSymbolAtLocation(node);
-        return getJsDocDeprecation(property) ?? getJsDocDeprecation(symbol);
+        const propertySymbol = services.getSymbolAtLocation(node);
+        const valueSymbol = checker.getShorthandAssignmentValueSymbol(
+          propertySymbol?.valueDeclaration,
+        );
+        return (
+          searchForDeprecationInAliasesChain(propertySymbol, true) ??
+          getJsDocDeprecation(property) ??
+          getJsDocDeprecation(propertySymbol) ??
+          getJsDocDeprecation(valueSymbol)
+        );
       }
+
       return searchForDeprecationInAliasesChain(
         services.getSymbolAtLocation(node),
         true,
@@ -322,16 +366,25 @@ export default createRule({
     }
 
     function checkIdentifier(node: IdentifierLike): void {
-      if (isDeclaration(node) || isInsideExportOrImport(node)) {
+      if (isDeclaration(node) || isInsideImport(node)) {
         return;
       }
 
       const reason = getDeprecationReason(node);
+
       if (reason == null) {
         return;
       }
 
-      const name = node.type === AST_NODE_TYPES.Super ? 'super' : node.name;
+      const type = services.getTypeAtLocation(node);
+      if (
+        typeMatchesSomeSpecifier(type, allow, services.program) ||
+        valueMatchesSomeSpecifier(node, allow, services.program, type)
+      ) {
+        return;
+      }
+
+      const name = getReportedNodeName(node);
 
       context.report({
         ...(reason
@@ -347,14 +400,94 @@ export default createRule({
       });
     }
 
+    function checkMemberExpression(node: TSESTree.MemberExpression): void {
+      if (!node.computed) {
+        return;
+      }
+
+      const propertyType = services.getTypeAtLocation(node.property);
+
+      if (propertyType.isLiteral()) {
+        const objectType = services.getTypeAtLocation(node.object);
+
+        const propertyName = propertyType.isStringLiteral()
+          ? propertyType.value
+          : String(propertyType.value as number);
+
+        const property = objectType.getProperty(propertyName);
+
+        const reason = getJsDocDeprecation(property);
+        if (reason == null) {
+          return;
+        }
+
+        if (typeMatchesSomeSpecifier(objectType, allow, services.program)) {
+          return;
+        }
+
+        context.report({
+          ...(reason
+            ? {
+                messageId: 'deprecatedWithReason',
+                data: { name: propertyName, reason },
+              }
+            : {
+                messageId: 'deprecated',
+                data: { name: propertyName },
+              }),
+          node: node.property,
+        });
+      }
+    }
+
     return {
-      Identifier: checkIdentifier,
+      Identifier(node): void {
+        const { parent } = node;
+
+        if (
+          parent.type === AST_NODE_TYPES.ExportNamedDeclaration ||
+          parent.type === AST_NODE_TYPES.ExportAllDeclaration
+        ) {
+          return;
+        }
+
+        if (parent.type === AST_NODE_TYPES.ExportSpecifier) {
+          // only deal with the alias (exported) side, not the local binding
+          if (parent.exported !== node) {
+            return;
+          }
+
+          const symbol = services.getSymbolAtLocation(node);
+          const aliasDeprecation = getJsDocDeprecation(symbol);
+
+          if (aliasDeprecation != null) {
+            return;
+          }
+        }
+
+        // whether it's a plain identifier or the exported alias
+        checkIdentifier(node);
+      },
       JSXIdentifier(node): void {
         if (node.parent.type !== AST_NODE_TYPES.JSXClosingElement) {
           checkIdentifier(node);
         }
       },
+      MemberExpression: checkMemberExpression,
+      PrivateIdentifier: checkIdentifier,
       Super: checkIdentifier,
     };
   },
 });
+
+function getReportedNodeName(node: IdentifierLike): string {
+  if (node.type === AST_NODE_TYPES.Super) {
+    return 'super';
+  }
+
+  if (node.type === AST_NODE_TYPES.PrivateIdentifier) {
+    return `#${node.name}`;
+  }
+
+  return node.name;
+}

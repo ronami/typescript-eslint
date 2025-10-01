@@ -100,13 +100,31 @@ export default createRule<Options, MessageIds>({
             description:
               'Changes to required accessibility modifiers for specific kinds of class members.',
             properties: {
-              accessors: { $ref: '#/items/0/$defs/accessibilityLevel' },
-              constructors: { $ref: '#/items/0/$defs/accessibilityLevel' },
-              methods: { $ref: '#/items/0/$defs/accessibilityLevel' },
+              accessors: {
+                $ref: '#/items/0/$defs/accessibilityLevel',
+                description:
+                  'Which member accessibility modifier requirements to apply for accessors.',
+              },
+              constructors: {
+                $ref: '#/items/0/$defs/accessibilityLevel',
+                description:
+                  'Which member accessibility modifier requirements to apply for constructors.',
+              },
+              methods: {
+                $ref: '#/items/0/$defs/accessibilityLevel',
+                description:
+                  'Which member accessibility modifier requirements to apply for methods.',
+              },
               parameterProperties: {
                 $ref: '#/items/0/$defs/accessibilityLevel',
+                description:
+                  'Which member accessibility modifier requirements to apply for parameterProperties.',
               },
-              properties: { $ref: '#/items/0/$defs/accessibilityLevel' },
+              properties: {
+                $ref: '#/items/0/$defs/accessibilityLevel',
+                description:
+                  'Which member accessibility modifier requirements to apply for properties.',
+              },
             },
           },
         },
@@ -196,8 +214,10 @@ export default createRule<Options, MessageIds>({
      */
     function findPublicKeyword(
       node:
+        | TSESTree.AccessorProperty
         | TSESTree.MethodDefinition
         | TSESTree.PropertyDefinition
+        | TSESTree.TSAbstractAccessorProperty
         | TSESTree.TSAbstractMethodDefinition
         | TSESTree.TSAbstractPropertyDefinition
         | TSESTree.TSParameterProperty,
@@ -238,8 +258,10 @@ export default createRule<Options, MessageIds>({
      */
     function getMissingAccessibilitySuggestions(
       node:
+        | TSESTree.AccessorProperty
         | TSESTree.MethodDefinition
         | TSESTree.PropertyDefinition
+        | TSESTree.TSAbstractAccessorProperty
         | TSESTree.TSAbstractMethodDefinition
         | TSESTree.TSAbstractPropertyDefinition
         | TSESTree.TSParameterProperty,
@@ -284,7 +306,9 @@ export default createRule<Options, MessageIds>({
      */
     function checkPropertyAccessibilityModifier(
       propertyDefinition:
+        | TSESTree.AccessorProperty
         | TSESTree.PropertyDefinition
+        | TSESTree.TSAbstractAccessorProperty
         | TSESTree.TSAbstractPropertyDefinition,
     ): void {
       if (propertyDefinition.key.type === AST_NODE_TYPES.PrivateIdentifier) {
@@ -389,7 +413,7 @@ export default createRule<Options, MessageIds>({
     return {
       'MethodDefinition, TSAbstractMethodDefinition':
         checkMethodAccessibilityModifier,
-      'PropertyDefinition, TSAbstractPropertyDefinition':
+      'PropertyDefinition, TSAbstractPropertyDefinition, AccessorProperty, TSAbstractAccessorProperty':
         checkPropertyAccessibilityModifier,
       TSParameterProperty: checkParameterPropertyAccessibilityModifier,
     };

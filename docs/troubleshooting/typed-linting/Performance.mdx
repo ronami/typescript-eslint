@@ -38,6 +38,14 @@ In particular for typed linting:
   - [Performance Tracing](https://github.com/microsoft/TypeScript/wiki/Performance#performance-tracing) can spotlight specific slow types within your project.
 - [Using Project References](https://github.com/microsoft/TypeScript/wiki/Performance#using-project-references) -which requires enabling the [new "project service" (`parserOptions.projectService`) in v8](/blog/announcing-typescript-eslint-v8-beta#project-service)- can be helpful to speed up type checking on larger projects.
 
+If none of the above work, you can try adjusting the `--max-semi-space-size` of Node. Increasing the max size of a semi-space can improve performance at the cost of more memory consumption. You can [read more about setting space size in Node.js here](https://nodejs.org/api/cli.html#--max-semi-space-sizesize-in-mib).
+
+You can enable the setting by prepending your ESLint command like:
+
+```bash
+NODE_OPTIONS=--max-semi-space-size=256 eslint <rest of your command>
+```
+
 ## Wide includes in your `tsconfig`
 
 When using type-aware linting, you provide us with one or more tsconfigs.
@@ -172,7 +180,7 @@ Instead of globs that use `**` to recursively check all folders, prefer paths th
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
-export default tseslint.config(
+export default defineConfig(
   eslint.configs.recommended,
   tseslint.configs.recommendedRequiringTypeChecking,
   {
@@ -218,7 +226,7 @@ See [Glob pattern in parser's option "project" slows down linting](https://githu
 
 ## Third-Party Plugins
 
-### `@stylistic/ts/indent` and other stylistic rules rules
+### `@stylistic/ts/indent` and other stylistic rules
 
 The [`@stylisic/ts/indent` rule](https://eslint.style/rules/ts/indent#ts-indent) helps ensure your codebase follows a consistent indentation pattern.
 However this involves a _lot_ of computations across every single token in a file.
@@ -258,7 +266,7 @@ We recommend you do not use the following rules, as TypeScript provides the same
 - `import/namespace`
 - `import/default`
 - `import/no-named-as-default-member`
-- `import/no-unresolved` (as long as you are using [`import` over `require`](/rules/no-var-requires/))
+- `import/no-unresolved` (as long as you are using [`import` over `require`](/rules/no-require-imports))
 
 The following rules do not have equivalent checks in TypeScript, so we recommend that you only run them at CI/push time, to lessen the local performance burden.
 

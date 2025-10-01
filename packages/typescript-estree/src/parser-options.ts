@@ -9,8 +9,6 @@ import type * as ts from 'typescript';
 
 import type { TSESTree, TSESTreeToTSNode, TSNode, TSToken } from './ts-estree';
 
-export type { ProjectServiceOptions } from '@typescript-eslint/types';
-
 //////////////////////////////////////////////////////////
 // MAKE SURE THIS IS KEPT IN SYNC WITH THE WEBSITE DOCS //
 //////////////////////////////////////////////////////////
@@ -240,6 +238,7 @@ export interface ParserWeakMapESTreeToTSNode<
 export interface ParserServicesBase {
   emitDecoratorMetadata: boolean | undefined;
   experimentalDecorators: boolean | undefined;
+  isolatedDeclarations: boolean | undefined;
 }
 export interface ParserServicesNodeMaps {
   esTreeNodeToTSNodeMap: ParserWeakMapESTreeToTSNode;

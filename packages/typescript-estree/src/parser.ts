@@ -37,12 +37,12 @@ const log = debug('typescript-eslint:typescript-estree:parser');
  * clearProgramCache() is only intended to be used in testing to ensure the parser is clean between tests.
  */
 const existingPrograms = new Map<CanonicalPath, ts.Program>();
-function clearProgramCache(): void {
+export function clearProgramCache(): void {
   existingPrograms.clear();
 }
 
 const defaultProjectMatchedFiles = new Set<string>();
-function clearDefaultProjectMatchedFiles(): void {
+export function clearDefaultProjectMatchedFiles(): void {
   defaultProjectMatchedFiles.clear();
 }
 
@@ -68,13 +68,7 @@ function getProgramAndAST(
   }
 
   if (parseSettings.programs) {
-    const fromProvidedPrograms = useProvidedPrograms(
-      parseSettings.programs,
-      parseSettings,
-    );
-    if (fromProvidedPrograms) {
-      return fromProvidedPrograms;
-    }
+    return useProvidedPrograms(parseSettings.programs, parseSettings);
   }
 
   // no need to waste time creating a program as the caller didn't want parser services
@@ -90,14 +84,14 @@ function getProgramAndAST(
 }
 
 /* eslint-disable @typescript-eslint/no-empty-object-type */
-type AST<T extends TSESTreeOptions> = (T['comment'] extends true
+export type AST<T extends TSESTreeOptions> = (T['comment'] extends true
   ? { comments: TSESTree.Comment[] }
   : {}) &
   (T['tokens'] extends true ? { tokens: TSESTree.Token[] } : {}) &
   TSESTree.Program;
 /* eslint-enable @typescript-eslint/no-empty-object-type */
 
-interface ParseAndGenerateServicesResult<T extends TSESTreeOptions> {
+export interface ParseAndGenerateServicesResult<T extends TSESTreeOptions> {
   ast: AST<T>;
   services: ParserServices;
 }
@@ -106,7 +100,7 @@ interface ParseWithNodeMapsResult<T extends TSESTreeOptions>
   ast: AST<T>;
 }
 
-function parse<T extends TSESTreeOptions = TSESTreeOptions>(
+export function parse<T extends TSESTreeOptions = TSESTreeOptions>(
   code: string,
   options?: T,
 ): AST<T> {
@@ -156,11 +150,13 @@ function parseWithNodeMapsInternal<T extends TSESTreeOptions = TSESTreeOptions>(
 
 let parseAndGenerateServicesCalls: Record<string, number> = {};
 // Privately exported utility intended for use in typescript-eslint unit tests only
-function clearParseAndGenerateServicesCalls(): void {
+export function clearParseAndGenerateServicesCalls(): void {
   parseAndGenerateServicesCalls = {};
 }
 
-function parseAndGenerateServices<T extends TSESTreeOptions = TSESTreeOptions>(
+export function parseAndGenerateServices<
+  T extends TSESTreeOptions = TSESTreeOptions,
+>(
   code: string | ts.SourceFile,
   tsestreeOptions: T,
 ): ParseAndGenerateServicesResult<T> {
@@ -275,13 +271,3 @@ function parseAndGenerateServices<T extends TSESTreeOptions = TSESTreeOptions>(
     services: createParserServices(astMaps, program),
   };
 }
-
-export {
-  type AST,
-  clearDefaultProjectMatchedFiles,
-  clearParseAndGenerateServicesCalls,
-  clearProgramCache,
-  parse,
-  parseAndGenerateServices,
-  type ParseAndGenerateServicesResult,
-};

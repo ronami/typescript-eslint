@@ -10,7 +10,11 @@ Many users are new to open source and/or typed linting.
 It's imperative we give them a positive, uplifting experience.
 
 :::tip
-If you're ever unsure on any part of PR reviews, don't hesitate to loop in a maintainer who has more context to help!
+If you're a new team member, we encourage you to review PRs as soon as you feel comfortable doing so!
+In addition to benefitting the project, it's a great way to learn more about the codebase and project in general.
+Consider starting with areas you're most familiar with, and work your way up to more unfamiliar and complex PRs as you gain experience.
+
+If you're ever unsure on any part of PR reviews, don't hesitate to loop in a team member who has more context to help!
 :::
 
 ## Governance
@@ -74,9 +78,8 @@ If there's no backing issue:
 - Thoroughness: does it handle relevant edge cases? Commonly:
   - Generics and type parameters (see: `getConstrainedTypeAtLocation`).
   - Parenthesis and whitespace (see: `getWrappingFixer`).
-  - Unions and intersections (see: `unionTypeParts` and `intersectionTypeParts`).
+  - Unions and intersections (see: `unionConstituents` and `intersectionConstituents`).
 - Unit tests:
-  - All lines are covered per the Codecov / `yarn jest path/to/impacted/file --coverage` report.
   - Both "positive" and "negative" ("valid" and "invalid") cases exist, if reasonably possible to test for.
   - Fixes and suggestions, if present, don't remove `//` or `/*` comments
   - `invalid` lint rule errors include line and column information

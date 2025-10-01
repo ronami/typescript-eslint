@@ -28,6 +28,7 @@ export interface ErrorBlockProps {
 }
 
 export interface FixButtonProps {
+  readonly children?: React.ReactNode;
   readonly disabled: boolean;
   readonly fix: () => void;
   readonly setIsLocked: (value: boolean) => void;
@@ -59,7 +60,7 @@ function FixButton(props: FixButtonProps): React.JSX.Element {
         props.setIsLocked(true);
       }}
     >
-      fix
+      {props.children}
     </button>
   );
 }
@@ -80,10 +81,12 @@ function ErrorBlock({
             disabled={isLocked}
             fix={item.fixer.fix}
             setIsLocked={setIsLocked}
-          />
+          >
+            apply fix
+          </FixButton>
         )}
       </div>
-      {item.suggestions.length > 0 && (
+      {item.suggestions && item.suggestions.length > 0 && (
         <div>
           {item.suggestions.map((fixer, index) => (
             <div
@@ -95,7 +98,9 @@ function ErrorBlock({
                 disabled={isLocked}
                 fix={fixer.fix}
                 setIsLocked={setIsLocked}
-              />
+              >
+                apply suggestion
+              </FixButton>
             </div>
           ))}
         </div>

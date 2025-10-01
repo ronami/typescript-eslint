@@ -2,11 +2,12 @@ import type { Program } from 'typescript';
 
 import type { Lib } from './lib';
 
-type DebugLevel = boolean | ('eslint' | 'typescript' | 'typescript-eslint')[];
-type CacheDurationSeconds = number | 'Infinity';
+export type DebugLevel =
+  | boolean
+  | ('eslint' | 'typescript' | 'typescript-eslint')[];
+export type CacheDurationSeconds = number | 'Infinity';
 
-type EcmaVersion =
-  | 'latest'
+export type EcmaVersion =
   | 3
   | 5
   | 6
@@ -20,6 +21,7 @@ type EcmaVersion =
   | 14
   | 15
   | 16
+  | 17
   | 2015
   | 2016
   | 2017
@@ -31,17 +33,19 @@ type EcmaVersion =
   | 2023
   | 2024
   | 2025
+  | 2026
+  | 'latest'
   | undefined;
 
-type SourceTypeClassic = 'module' | 'script';
-type SourceType = 'commonjs' | SourceTypeClassic;
+export type SourceTypeClassic = 'module' | 'script';
+export type SourceType = 'commonjs' | SourceTypeClassic;
 
-type JSDocParsingMode = 'all' | 'none' | 'type-info';
+export type JSDocParsingMode = 'all' | 'none' | 'type-info';
 
 /**
  * Granular options to configure the project service.
  */
-interface ProjectServiceOptions {
+export interface ProjectServiceOptions {
   /**
    * Globs of files to allow running with the default project compiler options
    * despite not being matched by the project service.
@@ -70,7 +74,7 @@ interface ProjectServiceOptions {
 }
 
 // If you add publicly visible options here, make sure they're also documented in `docs/packages/Parser.mdx`
-interface ParserOptions {
+export interface ParserOptions {
   [additionalProperties: string]: unknown;
   cacheLifetime?: {
     glob?: CacheDurationSeconds;
@@ -96,6 +100,8 @@ interface ParserOptions {
   experimentalDecorators?: boolean;
   extraFileExtensions?: string[];
   filePath?: string;
+  // use isolatedDeclarations without specifying parserOptions.project
+  isolatedDeclarations?: boolean;
   jsDocParsingMode?: JSDocParsingMode;
   jsxFragmentName?: string | null;
   // scope-manager specific
@@ -112,13 +118,3 @@ interface ParserOptions {
 
   warnOnUnsupportedTypeScriptVersion?: boolean;
 }
-
-export type {
-  CacheDurationSeconds,
-  DebugLevel,
-  EcmaVersion,
-  JSDocParsingMode,
-  ParserOptions,
-  ProjectServiceOptions,
-  SourceType,
-};

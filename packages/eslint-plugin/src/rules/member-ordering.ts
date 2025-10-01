@@ -488,7 +488,7 @@ function isMemberOptional(node: Member): boolean {
     case AST_NODE_TYPES.PropertyDefinition:
     case AST_NODE_TYPES.TSAbstractMethodDefinition:
     case AST_NODE_TYPES.MethodDefinition:
-      return !!node.optional;
+      return node.optional;
   }
   return false;
 }
@@ -547,6 +547,13 @@ function getRank(
   supportsModifiers: boolean,
 ): number {
   const type = getNodeType(node);
+
+  if (
+    node.type === AST_NODE_TYPES.MethodDefinition &&
+    node.value.type === AST_NODE_TYPES.TSEmptyBodyFunctionExpression
+  ) {
+    return -1;
+  }
 
   if (type == null) {
     // shouldn't happen but just in case, put it on the end
@@ -721,6 +728,7 @@ export default createRule<Options, MessageIds>({
     type: 'suggestion',
     docs: {
       description: 'Require a consistent member declaration order',
+      frozen: true,
     },
     messages: {
       incorrectGroupOrder:
@@ -782,18 +790,23 @@ export default createRule<Options, MessageIds>({
         properties: {
           classes: {
             $ref: '#/items/0/$defs/baseConfig',
+            description: 'Which ordering to enforce for classes.',
           },
           classExpressions: {
             $ref: '#/items/0/$defs/baseConfig',
+            description: 'Which ordering to enforce for classExpressions.',
           },
           default: {
             $ref: '#/items/0/$defs/baseConfig',
+            description: 'Which ordering to enforce for default.',
           },
           interfaces: {
             $ref: '#/items/0/$defs/typesConfig',
+            description: 'Which ordering to enforce for interfaces.',
           },
           typeLiterals: {
             $ref: '#/items/0/$defs/typesConfig',
+            description: 'Which ordering to enforce for typeLiterals.',
           },
         },
       },

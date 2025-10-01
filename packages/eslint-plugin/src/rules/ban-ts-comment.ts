@@ -4,12 +4,14 @@ import { AST_TOKEN_TYPES } from '@typescript-eslint/utils';
 
 import { createRule, getStringLength, nullThrows } from '../util';
 
+const defaultMinimumDescriptionLength = 3;
+
 export type DirectiveConfig =
   | boolean
   | 'allow-with-description'
   | { descriptionFormat: string };
 
-export interface Options {
+export interface OptionsShape {
   minimumDescriptionLength?: number;
   'ts-check'?: DirectiveConfig;
   'ts-expect-error'?: DirectiveConfig;
@@ -17,7 +19,7 @@ export interface Options {
   'ts-nocheck'?: DirectiveConfig;
 }
 
-const defaultMinimumDescriptionLength = 3;
+export type Options = [OptionsShape];
 
 export type MessageIds =
   | 'replaceTsIgnoreWithTsExpectError'
@@ -31,7 +33,7 @@ interface MatchedTSDirective {
   directive: string;
 }
 
-export default createRule<[Options], MessageIds>({
+export default createRule<Options, MessageIds>({
   name: 'ban-ts-comment',
   meta: {
     type: 'problem',
@@ -84,14 +86,29 @@ export default createRule<[Options], MessageIds>({
         properties: {
           minimumDescriptionLength: {
             type: 'number',
-            default: defaultMinimumDescriptionLength,
             description:
               'A minimum character length for descriptions when `allow-with-description` is enabled.',
           },
-          'ts-check': { $ref: '#/items/0/$defs/directiveConfigSchema' },
-          'ts-expect-error': { $ref: '#/items/0/$defs/directiveConfigSchema' },
-          'ts-ignore': { $ref: '#/items/0/$defs/directiveConfigSchema' },
-          'ts-nocheck': { $ref: '#/items/0/$defs/directiveConfigSchema' },
+          'ts-check': {
+            $ref: '#/items/0/$defs/directiveConfigSchema',
+            description:
+              'Whether allow ts-check directives, and with which restrictions.',
+          },
+          'ts-expect-error': {
+            $ref: '#/items/0/$defs/directiveConfigSchema',
+            description:
+              'Whether and when expect-error directives, and with which restrictions.',
+          },
+          'ts-ignore': {
+            $ref: '#/items/0/$defs/directiveConfigSchema',
+            description:
+              'Whether allow ts-ignore directives, and with which restrictions.',
+          },
+          'ts-nocheck': {
+            $ref: '#/items/0/$defs/directiveConfigSchema',
+            description:
+              'Whether allow ts-nocheck directives, and with which restrictions.',
+          },
         },
       },
     ],
@@ -203,7 +220,7 @@ export default createRule<[Options], MessageIds>({
             return;
           }
 
-          const fullDirective = `ts-${directive}` as keyof Options;
+          const fullDirective = `ts-${directive}` as keyof OptionsShape;
 
           const option = options[fullDirective];
           if (option === true) {

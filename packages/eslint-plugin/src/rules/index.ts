@@ -53,6 +53,7 @@ import noMagicNumbers from './no-magic-numbers';
 import noMeaninglessVoidOperator from './no-meaningless-void-operator';
 import noMisusedNew from './no-misused-new';
 import noMisusedPromises from './no-misused-promises';
+import noMisusedSpread from './no-misused-spread';
 import noMixedEnums from './no-mixed-enums';
 import noNamespace from './no-namespace';
 import noNonNullAssertedNullishCoalescing from './no-non-null-asserted-nullish-coalescing';
@@ -74,6 +75,7 @@ import noUnnecessaryTemplateExpression from './no-unnecessary-template-expressio
 import noUnnecessaryTypeArguments from './no-unnecessary-type-arguments';
 import noUnnecessaryTypeAssertion from './no-unnecessary-type-assertion';
 import noUnnecessaryTypeConstraint from './no-unnecessary-type-constraint';
+import noUnnecessaryTypeConversion from './no-unnecessary-type-conversion';
 import noUnnecessaryTypeParameters from './no-unnecessary-type-parameters';
 import noUnsafeArgument from './no-unsafe-argument';
 import noUnsafeAssignment from './no-unsafe-assignment';
@@ -185,6 +187,7 @@ const rules = {
   'no-meaningless-void-operator': noMeaninglessVoidOperator,
   'no-misused-new': noMisusedNew,
   'no-misused-promises': noMisusedPromises,
+  'no-misused-spread': noMisusedSpread,
   'no-mixed-enums': noMixedEnums,
   'no-namespace': noNamespace,
   'no-non-null-asserted-nullish-coalescing': noNonNullAssertedNullishCoalescing,
@@ -207,6 +210,7 @@ const rules = {
   'no-unnecessary-type-arguments': noUnnecessaryTypeArguments,
   'no-unnecessary-type-assertion': noUnnecessaryTypeAssertion,
   'no-unnecessary-type-constraint': noUnnecessaryTypeConstraint,
+  'no-unnecessary-type-conversion': noUnnecessaryTypeConversion,
   'no-unnecessary-type-parameters': noUnnecessaryTypeParameters,
   'no-unsafe-argument': noUnsafeArgument,
   'no-unsafe-assignment': noUnsafeAssignment,

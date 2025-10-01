@@ -142,6 +142,16 @@ export default createRule<Options, MessageIds>({
       return;
     }
 
+    function typeToString(type: ts.Type): string {
+      return checker.typeToString(
+        type,
+        undefined,
+        ts.TypeFormatFlags.AllowUniqueESSymbolType |
+          ts.TypeFormatFlags.UseAliasDefinedOutsideCurrentScope |
+          ts.TypeFormatFlags.UseFullyQualifiedType,
+      );
+    }
+
     function getSwitchMetadata(node: TSESTree.SwitchStatement): SwitchMetadata {
       const defaultCase = node.cases.find(
         switchCase => switchCase.test == null,
@@ -176,8 +186,8 @@ export default createRule<Options, MessageIds>({
 
       const missingLiteralBranchTypes: ts.Type[] = [];
 
-      for (const unionPart of tsutils.unionTypeParts(discriminantType)) {
-        for (const intersectionPart of tsutils.intersectionTypeParts(
+      for (const unionPart of tsutils.unionConstituents(discriminantType)) {
+        for (const intersectionPart of tsutils.intersectionConstituents(
           unionPart,
         )) {
           if (
@@ -230,7 +240,7 @@ export default createRule<Options, MessageIds>({
               .map(missingType =>
                 tsutils.isTypeFlagSet(missingType, ts.TypeFlags.ESSymbolLike)
                   ? `typeof ${missingType.getSymbol()?.escapedName as string}`
-                  : checker.typeToString(missingType),
+                  : typeToString(missingType),
               )
               .join(' | '),
           },
@@ -282,7 +292,7 @@ export default createRule<Options, MessageIds>({
         )
           ? // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             missingBranchName!
-          : checker.typeToString(missingBranchType);
+          : typeToString(missingBranchType);
 
         if (
           symbolName &&
@@ -423,10 +433,10 @@ function isTypeLiteralLikeType(type: ts.Type): boolean {
  */
 function doesTypeContainNonLiteralType(type: ts.Type): boolean {
   return tsutils
-    .unionTypeParts(type)
+    .unionConstituents(type)
     .some(type =>
       tsutils
-        .intersectionTypeParts(type)
+        .intersectionConstituents(type)
         .every(subType => !isTypeLiteralLikeType(subType)),
     );
 }

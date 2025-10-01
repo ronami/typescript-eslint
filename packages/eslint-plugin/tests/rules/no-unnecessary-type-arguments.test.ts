@@ -16,12 +16,11 @@ const ruleTester = new RuleTester({
 
 ruleTester.run('no-unnecessary-type-arguments', rule, {
   valid: [
-    'f<>();',
+    'f();',
     'f<string>();',
-    'expect().toBe<>();',
-    'class Foo extends Bar<> {}',
+    'class Foo extends Bar {}',
     'class Foo extends Bar<string> {}',
-    'class Foo implements Bar<> {}',
+    'class Foo implements Bar {}',
     'class Foo implements Bar<string> {}',
     `
 function f<T = number>() {}
@@ -179,6 +178,36 @@ namespace Foo {
 }
 class Bar extends Foo<string> {}
     `,
+    {
+      code: `
+function Button<T>() {
+  return <div></div>;
+}
+const button = <Button<string>></Button>;
+      `,
+      languageOptions: {
+        parserOptions: {
+          ecmaFeatures: {
+            jsx: true,
+          },
+        },
+      },
+    },
+    {
+      code: `
+function Button<T>() {
+  return <div></div>;
+}
+const button = <Button<string> />;
+      `,
+      languageOptions: {
+        parserOptions: {
+          ecmaFeatures: {
+            jsx: true,
+          },
+        },
+      },
+    },
   ],
   invalid: [
     {
@@ -558,6 +587,60 @@ namespace Foo {
   export class Bar {}
 }
 class Bar extends Foo {}
+      `,
+    },
+    {
+      code: `
+function Button<T = string>() {
+  return <div></div>;
+}
+const button = <Button<string>></Button>;
+      `,
+      errors: [
+        {
+          line: 5,
+          messageId: 'unnecessaryTypeParameter',
+        },
+      ],
+      languageOptions: {
+        parserOptions: {
+          ecmaFeatures: {
+            jsx: true,
+          },
+        },
+      },
+      output: `
+function Button<T = string>() {
+  return <div></div>;
+}
+const button = <Button></Button>;
+      `,
+    },
+    {
+      code: `
+function Button<T = string>() {
+  return <div></div>;
+}
+const button = <Button<string> />;
+      `,
+      errors: [
+        {
+          line: 5,
+          messageId: 'unnecessaryTypeParameter',
+        },
+      ],
+      languageOptions: {
+        parserOptions: {
+          ecmaFeatures: {
+            jsx: true,
+          },
+        },
+      },
+      output: `
+function Button<T = string>() {
+  return <div></div>;
+}
+const button = <Button />;
       `,
     },
   ],
