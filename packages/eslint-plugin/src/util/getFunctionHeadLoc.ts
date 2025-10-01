@@ -6,7 +6,7 @@ import { AST_NODE_TYPES, ESLintUtils } from '@typescript-eslint/utils';
 
 import { isArrowToken, isOpeningParenToken } from './astUtils';
 
-export type FunctionNode =
+type FunctionNode =
   | TSESTree.ArrowFunctionExpression
   | TSESTree.FunctionDeclaration
   | TSESTree.FunctionExpression;

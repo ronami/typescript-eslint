@@ -1,7 +1,7 @@
 import { ESLintUtils } from '@typescript-eslint/utils';
 import { builtinRules } from 'eslint/use-at-your-own-risk';
 
-export interface RuleMap {
+interface RuleMap {
   /* eslint-disable @typescript-eslint/consistent-type-imports -- more concise to use inline imports */
   'arrow-parens': typeof import('eslint/lib/rules/arrow-parens');
   'consistent-return': typeof import('eslint/lib/rules/consistent-return');
@@ -27,7 +27,7 @@ export interface RuleMap {
   /* eslint-enable @typescript-eslint/consistent-type-imports */
 }
 
-export type RuleId = keyof RuleMap;
+type RuleId = keyof RuleMap;
 
 export const getESLintCoreRule = <R extends RuleId>(ruleId: R): RuleMap[R] =>
   ESLintUtils.nullThrows(

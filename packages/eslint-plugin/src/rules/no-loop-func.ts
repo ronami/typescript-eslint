@@ -7,7 +7,7 @@ import type {
   InferOptionsTypeFromRule,
 } from '../util';
 
-import { createRule, isNodeInside } from '../util';
+import { createRule } from '../util';
 import { getESLintCoreRule } from '../util/getESLintCoreRule';
 
 const baseRule = getESLintCoreRule('no-loop-func');
@@ -153,7 +153,8 @@ export default createRule<Options, MessageIds>({
       if (
         kind === 'let' &&
         declaration &&
-        isNodeInside(declaration, loopNode)
+        declaration.range[0] > loopNode.range[0] &&
+        declaration.range[1] < loopNode.range[1]
       ) {
         return true;
       }

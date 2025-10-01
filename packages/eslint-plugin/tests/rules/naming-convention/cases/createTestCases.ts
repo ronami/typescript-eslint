@@ -82,7 +82,7 @@ const IGNORED_FILTER = {
   regex: /.gnored/.source,
 };
 
-export type Cases = { code: string[]; options: Omit<Options[0], 'format'> }[];
+type Cases = { code: string[]; options: Omit<Options[0], 'format'> }[];
 
 export function createTestCases(cases: Cases): void {
   const createValidTestCases = (): ValidTestCase<Options>[] =>

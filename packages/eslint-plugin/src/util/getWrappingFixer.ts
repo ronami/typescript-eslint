@@ -6,7 +6,7 @@ import {
   ESLintUtils,
 } from '@typescript-eslint/utils';
 
-export interface WrappingFixerParams {
+interface WrappingFixerParams {
   /**
    * Descendant of `node` we want to preserve.
    * Use this to replace some code with another.

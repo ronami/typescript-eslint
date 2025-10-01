@@ -109,7 +109,7 @@ interface ParseOptions {
   suppressDeprecatedPropertyWarnings?: boolean;
 }
 
-export interface ParseAndGenerateServicesOptions extends ParseOptions {
+interface ParseAndGenerateServicesOptions extends ParseOptions {
   /**
    * Granular control of the expiry lifetime of our internal caches.
    * You can specify the number of seconds as an integer number, or the string

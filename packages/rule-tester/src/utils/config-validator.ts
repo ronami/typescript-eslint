@@ -18,7 +18,7 @@ import { flatConfigSchema } from './flat-config-schema';
 import { getRuleOptionsSchema } from './getRuleOptionsSchema';
 import { hasOwnProperty } from './hasOwnProperty';
 
-export type GetAdditionalRule = (ruleId: string) => AnyRuleModule | null;
+type GetAdditionalRule = (ruleId: string) => AnyRuleModule | null;
 
 const ajv = ajvBuilder();
 const ruleValidators = new WeakMap<AnyRuleModule, ValidateFunction>();

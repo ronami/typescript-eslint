@@ -24,7 +24,7 @@ export type MessageIds =
   | 'replaceObjectTypeAssertionWithSatisfies'
   | 'unexpectedArrayTypeAssertion'
   | 'unexpectedObjectTypeAssertion';
-export type OptUnion =
+type OptUnion =
   | {
       assertionStyle: 'angle-bracket' | 'as';
       objectLiteralTypeAssertions?: 'allow' | 'allow-as-parameter' | 'never';

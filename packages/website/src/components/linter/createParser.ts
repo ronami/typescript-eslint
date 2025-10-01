@@ -13,14 +13,12 @@ import type {
 
 import { defaultParseSettings } from './config';
 
-export type TSVFS = typeof tsvfs;
-
 export function createParser(
   system: PlaygroundSystem,
   compilerOptions: ts.CompilerOptions,
   onUpdate: (filename: string, model: UpdateModel) => void,
   utils: WebLinterModule,
-  vfs: TSVFS,
+  vfs: typeof tsvfs,
 ): {
   updateConfig: (compilerOptions: ts.CompilerOptions) => void;
   registerFile: RegisterFile;

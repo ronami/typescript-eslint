@@ -7,11 +7,9 @@ import type { PlaygroundSystem } from './types';
 import { debounce } from '../lib/debounce';
 import { getPathRegExp } from './utils';
 
-export type TSVFS = typeof tsvfs;
-
 export function createFileSystem(
   config: Pick<ConfigModel, 'code' | 'eslintrc' | 'fileType' | 'tsconfig'>,
-  vfs: TSVFS,
+  vfs: typeof tsvfs,
 ): PlaygroundSystem {
   const files = new Map<string, string>();
   files.set(`/.eslintrc`, config.eslintrc);

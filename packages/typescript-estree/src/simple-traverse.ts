@@ -21,7 +21,7 @@ function getVisitorKeysForNode(
   return (keys ?? []) as never;
 }
 
-export type SimpleTraverseOptions = Readonly<
+type SimpleTraverseOptions = Readonly<
   | {
       enter: (node: TSESTree.Node, parent: TSESTree.Node | undefined) => void;
       visitorKeys?: Readonly<VisitorKeys>;

@@ -7,9 +7,9 @@ import type {
 
 import { normalizeSeverityToNumber } from './severity';
 
-export type PluginMemberName = `${string}/${string}`;
+type PluginMemberName = `${string}/${string}`;
 
-export interface ObjectPropertySchema<T = unknown> {
+interface ObjectPropertySchema<T = unknown> {
   merge: string | ((a: T, b: T) => T);
   validate: string | ((value: unknown) => asserts value is T);
 }
@@ -423,7 +423,7 @@ const processorSchema: ObjectPropertySchema<Processor.LooseProcessorModule> = {
   },
 };
 
-export type ConfigRules = Record<string, SharedConfig.RuleLevelAndOptions>;
+type ConfigRules = Record<string, SharedConfig.RuleLevelAndOptions>;
 
 const rulesSchema = {
   merge(first: ConfigRules = {}, second: ConfigRules = {}): ConfigRules {

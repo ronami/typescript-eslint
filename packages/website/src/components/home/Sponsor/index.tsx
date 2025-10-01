@@ -5,7 +5,7 @@ import type { SponsorData } from '../FinancialContributors/types';
 
 import styles from './styles.module.css';
 
-export interface SponsorProps {
+interface SponsorProps {
   includeName?: boolean;
   sponsor: SponsorData;
 }

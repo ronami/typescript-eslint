@@ -219,7 +219,7 @@ interface ReportDescriptorBase<MessageIds extends string> {
   // we disallow this because it's much better to use messageIds for reusable errors that are easily testable
   // readonly desc?: string;
 }
-export interface ReportDescriptorWithSuggestion<MessageIds extends string>
+interface ReportDescriptorWithSuggestion<MessageIds extends string>
   extends ReportDescriptorBase<MessageIds> {
   /**
    * 6.7's Suggestions API
@@ -227,7 +227,7 @@ export interface ReportDescriptorWithSuggestion<MessageIds extends string>
   readonly suggest?: Readonly<ReportSuggestionArray<MessageIds>> | null;
 }
 
-export interface ReportDescriptorNodeOptionalLoc {
+interface ReportDescriptorNodeOptionalLoc {
   /**
    * An override of the location of the report
    */
@@ -239,7 +239,7 @@ export interface ReportDescriptorNodeOptionalLoc {
    */
   readonly node: TSESTree.Node | TSESTree.Token;
 }
-export interface ReportDescriptorLocOnly {
+interface ReportDescriptorLocOnly {
   /**
    * An override of the location of the report
    */
@@ -490,7 +490,7 @@ export type RuleFunction<T extends TSESTree.NodeOrTokenData = never> = (
   node: T,
 ) => void;
 
-export interface RuleListenerBaseSelectors {
+interface RuleListenerBaseSelectors {
   AccessorProperty?: RuleFunction<TSESTree.AccessorProperty>;
   ArrayExpression?: RuleFunction<TSESTree.ArrayExpression>;
   ArrayPattern?: RuleFunction<TSESTree.ArrayPattern>;
@@ -660,13 +660,10 @@ export interface RuleListenerBaseSelectors {
   WithStatement?: RuleFunction<TSESTree.WithStatement>;
   YieldExpression?: RuleFunction<TSESTree.YieldExpression>;
 }
-export type RuleListenerExitSelectors = {
+type RuleListenerExitSelectors = {
   [K in keyof RuleListenerBaseSelectors as `${K}:exit`]: RuleListenerBaseSelectors[K];
 };
-export type RuleListenerCatchAllBaseCase = Record<
-  string,
-  RuleFunction | undefined
->;
+type RuleListenerCatchAllBaseCase = Record<string, RuleFunction | undefined>;
 // Interface to merge into for anyone that wants to add more selectors
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface RuleListenerExtension {

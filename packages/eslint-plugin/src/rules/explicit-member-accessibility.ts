@@ -14,7 +14,7 @@ import {
 } from '../util/getMemberHeadLoc';
 import { rangeToLoc } from '../util/rangeToLoc';
 
-export type AccessibilityLevel =
+type AccessibilityLevel =
   | 'explicit' // require an accessor (including public)
   | 'no-public' // don't require public
   | 'off'; // don't check

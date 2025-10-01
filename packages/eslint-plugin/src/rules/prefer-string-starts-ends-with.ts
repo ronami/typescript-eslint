@@ -23,7 +23,7 @@ import {
 const EQ_OPERATORS = /^[=!]=/;
 const regexpp = new RegExpParser();
 
-export type AllowedSingleElementEquality = 'always' | 'never';
+type AllowedSingleElementEquality = 'always' | 'never';
 
 export type Options = [
   {

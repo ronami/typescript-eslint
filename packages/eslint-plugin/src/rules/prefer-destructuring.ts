@@ -15,8 +15,8 @@ import { getESLintCoreRule } from '../util/getESLintCoreRule';
 
 const baseRule = getESLintCoreRule('prefer-destructuring');
 
-export type BaseOptions = InferOptionsTypeFromRule<typeof baseRule>;
-export type EnforcementOptions = {
+type BaseOptions = InferOptionsTypeFromRule<typeof baseRule>;
+type EnforcementOptions = {
   enforceForDeclarationWithTypeAnnotation?: boolean;
 } & BaseOptions[1];
 export type Options = [BaseOptions[0], EnforcementOptions];

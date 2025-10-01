@@ -120,7 +120,7 @@ function compareByVisiting(
 
   return NodeComparisonResult.Equal;
 }
-export type CompareNodesArgument = TSESTree.Node | null | undefined;
+type CompareNodesArgument = TSESTree.Node | null | undefined;
 function compareNodesUncached(
   nodeA: TSESTree.Node,
   nodeB: TSESTree.Node,

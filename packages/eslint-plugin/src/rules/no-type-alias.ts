@@ -4,7 +4,7 @@ import { AST_NODE_TYPES, AST_TOKEN_TYPES } from '@typescript-eslint/utils';
 
 import { createRule } from '../util';
 
-export type Values =
+type Values =
   | 'always'
   | 'in-intersections'
   | 'in-unions'

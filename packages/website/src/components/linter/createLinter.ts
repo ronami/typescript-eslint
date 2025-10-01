@@ -44,8 +44,6 @@ export interface CreateLinter {
   registerFile: RegisterFile;
 }
 
-export type TSVFS = typeof tsvfs;
-
 export function createLinter(
   system: PlaygroundSystem,
   webLinterModule: WebLinterModule,

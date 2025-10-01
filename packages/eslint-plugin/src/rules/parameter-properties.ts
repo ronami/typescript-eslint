@@ -4,7 +4,7 @@ import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 
 import { createRule, nullThrows } from '../util';
 
-export type Modifier =
+type Modifier =
   | 'private'
   | 'private readonly'
   | 'protected'
@@ -13,7 +13,7 @@ export type Modifier =
   | 'public readonly'
   | 'readonly';
 
-export type Prefer = 'class-property' | 'parameter-property';
+type Prefer = 'class-property' | 'parameter-property';
 
 export type Options = [
   {

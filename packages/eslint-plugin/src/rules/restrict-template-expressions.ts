@@ -56,6 +56,7 @@ const optionTesters = (
   option: `allow${type}` as const,
   tester,
 }));
+
 export type Options = [
   {
     allow?: TypeOrValueSpecifier[];
