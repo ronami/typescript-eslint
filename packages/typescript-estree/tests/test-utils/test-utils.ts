@@ -41,7 +41,7 @@ export function deeplyCopy<T extends NonNullable<unknown>>(ast: T): T {
   return omitDeep(ast) as T;
 }
 
-export type UnknownObject = Record<string, unknown>;
+type UnknownObject = Record<string, unknown>;
 
 function isObjectLike(value: unknown): boolean {
   return (
